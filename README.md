@@ -1,0 +1,18 @@
+# Stereo Vision Project
+
+This is a mini-project for the image processing course of the [FHGR B.Sc. Mobile Robotics](https://fhgr.ch/mr),
+implemented by [Dominic Eicher](https://github.com/Nic822), [Riaan Kämpfer](https://github.com/RiaanGitHub)
+and [Ralph Ursprung](https://github.com/rursprung).
+
+The goal of this project is to implement the basics of stereo vision:
+- calibrate two cameras using [ChArUco boards](https://docs.opencv.org/4.10.0/df/d4a/tutorial_charuco_detection.html)
+- rectify the images
+- identify key features in both images
+- match key features
+- calculate depth map
+- optional: create 3D point cloud
+
+To show how/that this works we plan to identify the width of an (otherwise isolated) object.
+
+Note that this is purely an educational project. For real-world applications you should really use pre-existing
+libraries which implement this with much more accuracy and cover more use-cases!
