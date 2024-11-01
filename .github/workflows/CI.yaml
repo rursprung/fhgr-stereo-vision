@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+        build_type: [Debug]
+        c_compiler: [cl, gcc-14]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+          - os: ubuntu-24.04
+            c_compiler: gcc-14
+            cpp_compiler: g++-14
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc-14
+          - os: ubuntu-24.04
+            c_compiler: cl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake + Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Setup vcpkg (incl. caching)
+        uses: lukka/run-vcpkg@v11
+
+      - name: Run CMake
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ninja-multi-vcpkg
+          buildPreset: ninja-multi-vcpkg
+          testPreset: ninja-multi-vcpkg
+          configurePresetAdditionalArgs: "[
+            '-DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}',
+            '-DCMAKE_C_COMPILER=${{ matrix.c_compiler }}',
+            '-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}'
+          ]"
+      - name: upload logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-buildtree-logs-${{ matrix.os }}
+          path: |
+            vcpkg/buildtrees/**/*.log
+
+  # simplify GH settings: have one single build to be required
+  build-results:
+    name: Final Results
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: check for failed builds
+        if: ${{ needs.build.result != 'success' }}
+        run: exit 1
