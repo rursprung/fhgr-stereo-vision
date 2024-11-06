@@ -17,6 +17,15 @@ To show how/that this works we plan to identify the width of an (otherwise isola
 Note that this is purely an educational project. For real-world applications you should really use pre-existing
 libraries which implement this with much more accuracy and cover more use-cases!
 
+## Project Structure
+
+The project consists of the following parts:
+* [A camera calibration tool](apps/calibrate/README.md) (which is independent of the library)
+* The stereo vision implementation:
+  * The library (everything in [`src/`](src/)), including test coverage (everything in [`test/`](src/))
+  * [An application using static images](apps/static-image/README.md)
+  * [An application using live images from a camera setup](apps/livecam/README.md)
+
 ## Building
 
 To build this project you will need:
