@@ -35,6 +35,13 @@ jobs:
       - name: Install CMake + Ninja
         uses: lukka/get-cmake@latest
 
+      # install dependencies of dependencies (based on CI failures)
+      - name: install dependencies
+        if: ${{ matrix.os == 'ubuntu-24.04' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxi-dev libxtst-dev libxrandr-dev libx11-dev libxft-dev libxext-dev libltdl-dev
+
       - name: Setup vcpkg (incl. caching)
         uses: lukka/run-vcpkg@v11
 
