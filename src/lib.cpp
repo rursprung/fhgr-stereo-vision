@@ -7,8 +7,6 @@ namespace stereo_vision {
     switch (this->value_) {
       case kInvalidImage:
         return "invalid image!";
-      case kNotYetImplemented:
-        return "not yet implemented!";
       default:
         throw std::runtime_error("unknown AnalysisError type!");
     }
@@ -18,7 +16,7 @@ namespace stereo_vision {
     return this->ToString();
   }
 
-  std::ostream &operator<<(std::ostream &o, AnalysisResult const &analysis_result) {
+  std::ostream &operator<<(std::ostream& o, AnalysisResult const& analysis_result) {
     // TODO: add output when adding data
     return o;
   }
@@ -43,15 +41,20 @@ namespace stereo_vision {
                                 this->undistort_rectify_map_right.first, this->undistort_rectify_map_right.second);
   }
 
-  auto StereoVision::AnalyzeAndAnnotateImage(cv::Mat const &left_image, cv::Mat const &right_image) const -> std::expected<AnalysisResult, AnalysisError> {
-    if (left_image.data == nullptr || right_image.data == nullptr) {
+  auto StereoVision::AnalyzeAndAnnotateImage(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::expected<AnalysisResult, AnalysisError> {
+    if (left_image.empty() || right_image.empty()) {
       return std::unexpected{AnalysisError::kInvalidImage};
     }
 
-    return std::unexpected{AnalysisError::kNotYetImplemented};
+    auto const& [left_image_rectified, right_image_rectified] = this->RectifyImages(left_image, right_image);
+
+    return {{
+      .left_image = left_image_rectified,
+      .right_image = right_image_rectified,
+    }};
   }
 
-  auto StereoVision::RectifyImages(cv::Mat const &left_image, cv::Mat const &right_image) const -> std::tuple<cv::Mat, cv::Mat> {
+  auto StereoVision::RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::tuple<cv::Mat, cv::Mat> {
     cv::Mat left_image_rectified, right_image_rectified;
     cv::remap(left_image, left_image_rectified, this->undistort_rectify_map_left.first,
               this->undistort_rectify_map_left.second, cv::INTER_LINEAR);

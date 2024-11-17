@@ -25,8 +25,6 @@ namespace stereo_vision {
     enum Value {
       /// The provided image is invalid (e.g. empty / no data).
       kInvalidImage,
-      /// The functionality is not yet implemented (will be removed the moment we start implementing this!)
-      kNotYetImplemented,
     };
 
     AnalysisError() = default;
@@ -47,18 +45,21 @@ namespace stereo_vision {
    * The analysis results for processed stereo images.
    */
   struct AnalysisResult {
-    // TODO: add data
+    /// The rectified image from the left camera.
+    cv::Mat const left_image;
+    /// The rectified image from the right camera.
+    cv::Mat const right_image;
   };
 
   /// Print detailed information about the result to an output stream.
-  std::ostream &operator<<(std::ostream &o, AnalysisResult const &analysis_result);
+  std::ostream &operator<<(std::ostream& o, AnalysisResult const& analysis_result);
 
   class StereoVision {
   public:
     struct Settings {
       /// The calibration data previously generated using the calibration application.
       /// Must match the camera used in this run!
-      StereoCameraInfo stereo_camera_info;
+      StereoCameraInfo const stereo_camera_info;
     };
 
     explicit StereoVision(Settings settings);
@@ -71,19 +72,28 @@ namespace stereo_vision {
      * @return the result of the analysis and the annotated image, see the description of {@link AnalysisResult} for
      * more details.
      */
-    [[nodiscard]] auto AnalyzeAndAnnotateImage(cv::Mat const &left_image, cv::Mat const &right_image) const -> std::expected<AnalysisResult, AnalysisError>;
+    [[nodiscard]]
+    auto AnalyzeAndAnnotateImage(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::expected<AnalysisResult, AnalysisError>;
 
   private:
     /// All externally configurable settings used by the analyzer.
     Settings const settings_;
     /// Undistortion and rectification transformation map for the left camera.
     /// See `cv::initUndistortRectifyMap` for more details.
-    std::pair<cv::Mat, cv::Mat> const undistort_rectify_map_left;
+    std::pair<cv::Mat, cv::Mat> undistort_rectify_map_left;
     /// Undistortion and rectification transformation map for the right camera.
     /// See `cv::initUndistortRectifyMap` for more details.
-    std::pair<cv::Mat, cv::Mat> const undistort_rectify_map_right;
+    std::pair<cv::Mat, cv::Mat>  undistort_rectify_map_right;
 
-    auto RectifyImages(cv::Mat const &left_image, cv::Mat const &right_image) const -> std::tuple<cv::Mat, cv::Mat>;
+    /**
+     * Rectify a stereo image pair.
+     *
+     * @param left_image The unrectified left image.
+     * @param right_image The unrectified right image.
+     * @return A tuple with the rectified image pair. The first value is the left image, the second the right.
+     */
+    [[nodiscard]]
+    auto RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::tuple<cv::Mat, cv::Mat>;
   };
 
 } // namespace stereo_vision
