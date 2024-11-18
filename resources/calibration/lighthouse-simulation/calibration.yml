@@ -1,6 +1,7 @@
 %YAML:1.0
 ---
 calibration:
+   file_version: 1
    image_size: [ 1200, 900 ]
    camera_matrix_left: !!opencv-matrix
       rows: 3

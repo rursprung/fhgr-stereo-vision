@@ -8,6 +8,9 @@
 #include <opencv2/opencv.hpp>
 
 namespace stereo_vision {
+  /// Version of the format of `StereoCameraInfo`. Stored in the config file to validate that it matches when loading it.
+  constexpr uint8_t kStereoCameraInfoVersion = 1;
+
   /// Contains all information from the stereo camera calibration which is needed to rectify images afterward.
   struct StereoCameraInfo {
     /// Image size used for camera calibration.
@@ -47,6 +50,7 @@ namespace stereo_vision {
   // order to be found ¯\_(ツ)_/¯.
   static void write(cv::FileStorage& fs, std::string const&, StereoCameraInfo const& x) {
     fs << "{"
+       << "file_version" << kStereoCameraInfoVersion
        << "image_size" << x.image_size
        << "camera_matrix_left" << x.camera_matrix_left
        << "camera_matrix_right" << x.camera_matrix_right
@@ -63,6 +67,12 @@ namespace stereo_vision {
   static void read(cv::FileNode const& node, StereoCameraInfo& x, StereoCameraInfo const& default_value = {}) {
     if (node.empty()) {
       throw std::runtime_error("missing camera info in config file!");
+    }
+
+    uint8_t version;
+    node["file_version"] >> version;
+    if (version != kStereoCameraInfoVersion) {
+      throw std::runtime_error(std::format("invalid config file version! Expected {} but found {}! Please re-generate the calibration file using the matching calibration software version.", kStereoCameraInfoVersion, version));
     }
 
     node["image_size"] >> x.image_size;
