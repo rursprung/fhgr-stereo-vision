@@ -54,6 +54,15 @@ struct BoardInformation {
   bool legacy_pattern;
 };
 
+inline std::ostream &operator<<(std::ostream &os, BoardInformation const& bi) {
+  return os << "board configuration:" << std::endl
+            << "  board_size = " << bi.board_size << std::endl
+            << "  square_length = " << bi.square_length << std::endl
+            << "  marker_length = " << bi.marker_length << std::endl
+            << "  aruco_marker_dictionary = " << bi.aruco_marker_dictionary << std::endl
+            << "  legacy_pattern = " << bi.legacy_pattern << std::endl;
+}
+
 /// API defined by OpenCV for `cv::FileStorage` interaction.
 /// See: https://docs.opencv.org/4.x/dd/d74/tutorial_file_input_output_with_xml_yml.html
 static void read(cv::FileNode const& node, BoardInformation& x, const BoardInformation& default_value = {}){
@@ -276,7 +285,10 @@ int main(int const argc, char const * const argv[]) {
       .show_images = true,
       .wait_time = 1,
     };
-    CalibrationRun calibration_run{config, LoadBoardInformationFromConfigFile(path / "config.yml")};
+    auto const board_information = LoadBoardInformationFromConfigFile(path / "config.yml");
+    std::cout << board_information;
+
+    CalibrationRun calibration_run{config, board_information};
 
     auto const stereo_camera_info = calibration_run.RunCalibration(path);
     std::cout << "Calibration result:" << std::endl << stereo_camera_info << std::endl;
