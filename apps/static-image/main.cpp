@@ -10,6 +10,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
+#include <gcc-bug-117560-workaround.hpp>
 #include <stereo-vision-lib/lib.hpp>
 
 /// Input parameters if a folder was chosen.
@@ -128,18 +129,12 @@ void ProcessFolderPath(FolderPath const& folder_path) {
     return cv::imread(e.path().string(), cv::IMREAD_COLOR);
   };
 
-#ifndef __GLIBCXX__
-
   auto images_left = std::filesystem::directory_iterator{folder_left} | std::views::transform(directory_entry_to_image);
   auto images_right = std::filesystem::directory_iterator{folder_right} | std::views::transform(directory_entry_to_image);
 
   for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
     ProcessImagePair(stereo_vis, image_left, image_right);
   }
-#else
-#warning libstdc++ from GCC is affected by a bug (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117560) which prevents using static-image with a folder path. Use libc++ from LLVM or MSVC to use it! Calling this will crash at runtime!
-  throw std::runtime_error("Folder path is unsupported due to a libstdc++ bug! Recompilewith libc++ from LLVM or MSVC to use this functionality!");
-#endif
 }
 
 /**

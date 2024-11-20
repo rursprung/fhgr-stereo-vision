@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
+#include <gcc-bug-117560-workaround.hpp>
 #include <stereo-vision-lib/StereoCameraInfo.hpp>
 
 /// Temporary helper to help with re-scaling for easy display.
@@ -199,7 +200,7 @@ auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, 
   if (this->config_.report_progress) {
     std::cout << "Processing images";
   }
-#ifndef __GLIBCXX__
+
   for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
     this->ProcessImage(image_left, object_points_left, image_points_left, "ongoing calibration, left");
     this->ProcessImage(image_right, object_points_right, image_points_right, "ongoing calibration, right");
@@ -208,21 +209,7 @@ auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, 
       std::cout << ".";
     }
   }
-#else
-  // WORKAROUND: we can't use `std::views::zip` here at the moment due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117560
-  for (auto const& image_left : images_left) {
-    this->ProcessImage(image_left, object_points_left, image_points_left, "ongoing calibration, left");
-    if (this->config_.report_progress) {
-      std::cout << ".";
-    }
-  }
-  for (auto const& image_right : images_right) {
-    this->ProcessImage(image_right, object_points_left, image_points_left, "ongoing calibration, right");
-    if (this->config_.report_progress) {
-      std::cout << ".";
-    }
-  }
-#endif
+
   if (this->config_.report_progress) {
     std::cout << " done" << std::endl;
     std::cout << "Calculating...";
