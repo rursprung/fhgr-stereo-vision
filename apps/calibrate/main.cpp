@@ -3,6 +3,7 @@
 #include <format>
 #include <vector>
 #include <ranges>
+#include <optional>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
@@ -134,7 +135,15 @@ private:
   /// The size of the images. Must be the same for all images. Set based on the first image being processed.
   cv::Size image_size_;
 
-  void ProcessImage(cv::Mat const& image, std::vector<std::vector<cv::Point3f>>& all_object_points, std::vector<std::vector<cv::Point2f>>& all_image_points, std::string const& window_title);
+  /**
+   * Find the ChArUco board in an image and calculate the object points and image points.
+   * @param image The image to be processed. Must already be rectified.
+   * @param window_title Title of the window in case the `show_images` config option is enabled (unused otherwise).
+   * @return A tuple containing the object points and image points discovered in the image or `std::nullopt` if no
+   *         ChArUco board was found or it was found incomplete (this is not considered an error but the image must be ignored).
+   */
+  [[nodiscard]]
+  auto ProcessImage(cv::Mat const& image, std::string const& window_title) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>>;
 };
 
 CalibrationRun::CalibrationRun(Config const config, BoardInformation const board_information):
@@ -145,44 +154,51 @@ CalibrationRun::CalibrationRun(Config const config, BoardInformation const board
   this->board_.setLegacyPattern(board_information.legacy_pattern);
 };
 
-void CalibrationRun::ProcessImage(cv::Mat const& image, std::vector<std::vector<cv::Point3f>>& all_object_points, std::vector<std::vector<cv::Point2f>>& all_image_points, std::string const& window_title) {
+auto CalibrationRun::ProcessImage(cv::Mat const& image, std::string const& window_title) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>> {
   auto const& board = this->board_detector_.getBoard();
 
-    if (this->config_.report_progress) {
-      std::cout << ".";
-    }
-    if (this->image_size_.empty()) {
-      this->image_size_ = image.size();
+  if (this->config_.report_progress) {
+    std::cout << ".";
+  }
+  if (this->image_size_.empty()) {
+    this->image_size_ = image.size();
+  }
+  if (this->image_size_ != image.size() || this->image_size_.empty()) {
+    std::cerr << "the image does not match the size of the first image! all images must have the same size!" << std::endl;
+    return std::nullopt;
+  }
+
+  std::vector<int> marker_ids;
+  std::vector<int> current_charuco_ids;
+  std::vector<std::vector<cv::Point2f>> marker_corners;
+  std::vector<cv::Point2f> current_charuco_corners;
+  std::vector<cv::Point3f> current_object_points;
+  std::vector<cv::Point2f> current_image_points;
+  this->board_detector_.detectBoard(image, current_charuco_corners, current_charuco_ids, marker_corners, marker_ids);
+
+  if (this->config_.show_images) {
+    cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
+    cv::aruco::drawDetectedCornersCharuco(image, current_charuco_corners, current_charuco_ids);
+    ShowImage(window_title, image);
+    cv::waitKey(this->config_.wait_time);
+  }
+
+  if(marker_ids.empty() || current_charuco_ids.empty() || current_charuco_corners.size() < 3) {
+    if (marker_ids.empty() && !this->board_information_.legacy_pattern) {
+      std::cerr << "WARNING: image does not contain a recognizable ChArUco board, but markers were found => legacy mode might have to be enabled)!" << std::endl;
     } else {
-      if (this->image_size_ != image.size()) {
-        std::cerr << "the image does not match the size of the first image! all images must have the same size!" << std::endl;
-        return;
-      }
+      std::cerr << "image does not contain a recognizable ChArUco board" << std::endl;
     }
+    return std::nullopt;
+  }
 
-    std::vector<int> marker_ids;
-    std::vector<int> current_charuco_ids;
-    std::vector<std::vector<cv::Point2f>> marker_corners;
-    std::vector<cv::Point2f> current_charuco_corners;
-    std::vector<cv::Point3f> current_object_points;
-    std::vector<cv::Point2f> current_image_points;
-    this->board_detector_.detectBoard(image, current_charuco_corners, current_charuco_ids, marker_corners, marker_ids);
+  board.matchImagePoints(current_charuco_corners, current_charuco_ids, current_object_points, current_image_points);
 
-    if (this->config_.show_images) {
-      cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
-      cv::aruco::drawDetectedCornersCharuco(image, current_charuco_corners, current_charuco_ids);
-      ShowImage(window_title, image);
-      cv::waitKey(this->config_.wait_time);
-    }
-
-    if(marker_ids.empty() || current_charuco_ids.empty() || current_charuco_corners.size() < 3) {
-      std::cerr << "WARNING: image does not contain a recognizable ChArUco board!" << (marker_ids.empty() ? "" : " but markers were found => legacy mode might have to be enabled)!") << std::endl;
-      return;
-    }
-
-    board.matchImagePoints(current_charuco_corners, current_charuco_ids, current_object_points, current_image_points);
-    all_image_points.push_back(current_image_points);
-    all_object_points.push_back(current_object_points);
+  if (current_image_points.size() != current_object_points.size()) {
+    std::cerr << "current_image_points.size() = " << current_image_points.size() << " does not match current_object_points.size() = " << current_object_points.size() << "!" << std::endl;
+    return std::nullopt;
+  }
+  return {{current_object_points, current_image_points}};
 }
 
 auto CalibrationRun::RunCalibration(std::filesystem::path const& image_folder_path) -> stereo_vision::StereoCameraInfo {
@@ -211,8 +227,21 @@ auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, 
   }
 
   for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
-    this->ProcessImage(image_left, object_points_left, image_points_left, "ongoing calibration, left");
-    this->ProcessImage(image_right, object_points_right, image_points_right, "ongoing calibration, right");
+    auto const result_left = this->ProcessImage(image_left, "ongoing calibration, left");
+    auto const result_right = this->ProcessImage(image_right, "ongoing calibration, right");
+
+    if (result_left && result_right) {
+      auto const& [opl, ipl] = *result_left;
+      auto const& [opr, ipr] = *result_right;
+      if (opl.size() != opr.size()) {
+        std::cerr << "left & right didn't match the same amount of points (" << opl.size() << " vs. " << opr.size() << ") => skipping" << std::endl;
+        continue;
+      }
+      object_points_left.push_back(opl);
+      image_points_left.push_back(ipl);
+      object_points_right.push_back(opr);
+      image_points_right.push_back(ipr);
+    }
 
     if (this->config_.report_progress) {
       std::cout << ".";
@@ -221,7 +250,7 @@ auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, 
 
   if (this->config_.report_progress) {
     std::cout << " done" << std::endl;
-    std::cout << "Calculating...";
+    std::cout << "Calculating using " << object_points_left.size() << " usable images...";
   }
 
   auto const flags = cv::CALIB_FIX_K3 | cv::CALIB_FIX_K4 | cv::CALIB_FIX_K5 | cv::CALIB_FIX_K6 | cv::CALIB_ZERO_TANGENT_DIST;
