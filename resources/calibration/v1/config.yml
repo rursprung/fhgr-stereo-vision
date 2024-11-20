@@ -1,0 +1,8 @@
+%YAML:1.0
+---
+board:
+  board_size: [ 11, 8 ]
+  square_length: 15
+  marker_length: 11
+  aruco_marker_dictionary: 4
+  legacy_pattern: true
