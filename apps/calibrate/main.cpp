@@ -11,6 +11,9 @@
 #include <gcc-bug-117560-workaround.hpp>
 #include <stereo-vision-lib/StereoCameraInfo.hpp>
 
+/// The maximum acceptable reprojection error. Anything above that will trigger a warning before saving the calibration result.
+double constexpr kMaxReprojectionError = 0.5f;
+
 /// Temporary helper to help with re-scaling for easy display.
 void ShowImage(auto const& title, auto const& image) {
   cv::Mat out;
@@ -291,8 +294,12 @@ bool ReadYesNoFromConsole() {
 }
 
 void OptionallyStoreCalibrationResult(stereo_vision::StereoCameraInfo const& stereo_camera_info, std::filesystem::path const& calibration_result_file_path) {
+  if (stereo_camera_info.reprojection_error > kMaxReprojectionError) {
+    std::cout << std::format("Warning: the reprojection error ({:.3f}) exceeds the recommended upper limit of {:.3f}!", stereo_camera_info.reprojection_error, kMaxReprojectionError)
+              << " This implies that the calibration result is not satisfactory and will most likely not result in a usable rectification! Do you want to safe this result anyway? (If not, the result will not be stored) [Y/N] " << std::endl;
+  }
   if (std::filesystem::exists(calibration_result_file_path)) {
-    std::cout << "A file for the calibration result already exists in the target location (" << calibration_result_file_path.string() << ")! Do you want to overwrite this file (if not, the result will not be stored)? [Y/N] " << std::endl;
+    std::cout << "A file for the calibration result already exists in the target location (" << calibration_result_file_path.string() << ")! Do you want to overwrite this file? If not, the result will not be stored) [Y/N] " << std::endl;
     if (!ReadYesNoFromConsole()) {
       std::cout << "The calibration result will not be stored." << std::endl;
       return;
