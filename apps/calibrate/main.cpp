@@ -10,6 +10,8 @@
 #include <gcc-bug-117560-workaround.hpp>
 #include <stereo-vision-lib/StereoCameraInfo.hpp>
 
+#include <opencv2/aruco.hpp>
+
 /// Temporary helper to help with re-scaling for easy display.
 void ShowImage(auto const& title, auto const& image) {
   cv::Mat out;

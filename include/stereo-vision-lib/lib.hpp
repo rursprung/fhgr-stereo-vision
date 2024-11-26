@@ -96,6 +96,9 @@ namespace stereo_vision {
     auto RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::tuple<cv::Mat, cv::Mat>;
   };
 
+  /// Declaration of HOG object detector function:
+  void HOGObjDetect(cv::Mat const& image);
+
 } // namespace stereo_vision
 
 #endif // STEREO_VISION_LIB_HPP

@@ -91,7 +91,7 @@ auto GetPathsFromArgs(int const argc, char const *const argv[]) -> path_t {
  *
  * @param stereo_vis stereo vision algorithm used to process the images.
  * @param left_image image for the left camera. must have been taken at the same time as the right image.
- * @param right_image image for the rigt camera. must have been taken at the same time as the left image.
+ * @param right_image image for the right camera. must have been taken at the same time as the left image.
  */
 void ProcessImagePair(stereo_vision::StereoVision const& stereo_vis, cv::Mat const& left_image, cv::Mat const& right_image) {
   auto const& result = stereo_vis.AnalyzeAndAnnotateImage(left_image, right_image);
@@ -105,6 +105,11 @@ void ProcessImagePair(stereo_vision::StereoVision const& stereo_vis, cv::Mat con
   std::cout << "Analysis result:" << std::endl;
   std::cout << *result << std::endl;
 
+  // Perform HOG detection on the left and right images
+  stereo_vision::HOGObjDetect(result->left_image);
+  stereo_vision::HOGObjDetect(result->right_image);
+
+  // Display the rectified images
   cv::imshow("left", result->left_image);
   cv::imshow("right", result->right_image);
   cv::waitKey();

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <stereo-vision-lib/lib.hpp>
+#include <opencv2/objdetect.hpp>
 
 namespace stereo_vision {
 
@@ -20,6 +21,27 @@ namespace stereo_vision {
     // TODO: add output when adding data
     return o;
   }
+
+  /// Implementation of HOG-based object detection function
+  void stereo_vision::HOGObjDetect(cv::Mat const& image) {
+    // Create a HOG descriptor object
+    cv::HOGDescriptor hog;
+    hog.setSVMDetector(cv::HOGDescriptor::getDefaultPeopleDetector());
+
+    // Detect objects in the image
+    std::vector<cv::Rect> detections;
+    hog.detectMultiScale(image, detections);
+
+    // Draw rectangles around detected objects
+    for (auto const& rect : detections) {
+      cv::rectangle(image, rect, cv::Scalar(0, 255, 0), 2);
+    }
+
+    // Display the result of HOG-based object detection
+    cv::imshow("HOG Detection", image);
+    cv::waitKey(0);
+  }
+
 
   StereoVision::StereoVision(Settings const settings) : settings_(std::move(settings)) {
     cv::Mat R_left, R_right, P_left, P_right, Q;
@@ -45,8 +67,11 @@ namespace stereo_vision {
     if (left_image.empty() || right_image.empty()) {
       return std::unexpected{AnalysisError::kInvalidImage};
     }
-
+    /// Rectifie images
     auto const& [left_image_rectified, right_image_rectified] = this->RectifyImages(left_image, right_image);
+
+    /// Perform HOG-based object detection on the left rectified image
+    HOGObjDetect(left_image_rectified);
 
     return {{
       .left_image = left_image_rectified,
