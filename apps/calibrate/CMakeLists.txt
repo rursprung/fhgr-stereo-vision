@@ -1,6 +1,6 @@
 find_package(OpenCV CONFIG REQUIRED)
 
-add_executable(stereo-vision-calibrate-static static-image-main.cpp CalibrationRun.cpp)
+add_executable(stereo-vision-calibrate-static static-image-main.cpp calibration.cpp)
 
 target_include_directories(
         stereo-vision-calibrate-static
@@ -12,7 +12,7 @@ target_link_libraries(stereo-vision-calibrate-static
         PUBLIC ${OpenCV_LIBS}
 )
 
-add_executable(stereo-vision-calibrate-livecam livecam-main.cpp CalibrationRun.cpp)
+add_executable(stereo-vision-calibrate-livecam livecam-main.cpp calibration.cpp)
 
 target_include_directories(
         stereo-vision-calibrate-livecam

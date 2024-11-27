@@ -1,6 +1,6 @@
 #include <gcc-bug-117560-workaround.hpp>
 
-#include "CalibrationRun.hpp"
+#include "calibration.hpp"
 
 namespace stereo_vision::calibration {
 
