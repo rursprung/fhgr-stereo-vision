@@ -138,6 +138,9 @@ private:
   /// The size of the images. Must be the same for all images. Set based on the first image being processed.
   cv::Size image_size_;
 
+  std::vector<std::vector<cv::Point3f>> object_points_left_, object_points_right_;
+  std::vector<std::vector<cv::Point2f>> image_points_left_, image_points_right_;
+
   /**
    * Find the ChArUco board in an image and calculate the object points and image points.
    * @param image The image to be processed. Must already be rectified.
@@ -147,6 +150,11 @@ private:
    */
   [[nodiscard]]
   auto ProcessImage(cv::Mat const& image, std::string const& window_title) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>>;
+
+  void ProcessImagePair(cv::Mat const& image_left, cv::Mat const& image_right);
+
+  [[nodiscard]]
+  auto CalculateCalibration() const -> stereo_vision::StereoCameraInfo;
 };
 
 CalibrationRun::CalibrationRun(Config const config, BoardInformation const board_information):
@@ -204,6 +212,28 @@ auto CalibrationRun::ProcessImage(cv::Mat const& image, std::string const& windo
   return {{current_object_points, current_image_points}};
 }
 
+void CalibrationRun::ProcessImagePair(cv::Mat const& image_left, cv::Mat const& image_right) {
+  auto const result_left = this->ProcessImage(image_left, "ongoing calibration, left");
+  auto const result_right = this->ProcessImage(image_right, "ongoing calibration, right");
+
+  if (result_left && result_right) {
+    auto const& [opl, ipl] = *result_left;
+    auto const& [opr, ipr] = *result_right;
+    if (opl.size() != opr.size()) {
+      std::cerr << "left & right didn't match the same amount of points (" << opl.size() << " vs. " << opr.size() << ") => skipping" << std::endl;
+      return;
+    }
+    this->object_points_left_.push_back(opl);
+    this->image_points_left_.push_back(ipl);
+    this->object_points_right_.push_back(opr);
+    this->image_points_right_.push_back(ipr);
+  }
+
+  if (this->config_.report_progress) {
+    std::cout << ".";
+  }
+}
+
 auto CalibrationRun::RunCalibration(std::filesystem::path const& image_folder_path) -> stereo_vision::StereoCameraInfo {
   auto const folder_left = image_folder_path / "left";
   auto const folder_right = image_folder_path / "right";
@@ -221,44 +251,14 @@ auto CalibrationRun::RunCalibration(std::filesystem::path const& image_folder_pa
   return this->RunCalibration(images_left, images_right);
 };
 
-auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, std::ranges::range auto const& images_right) -> stereo_vision::StereoCameraInfo {
-  std::vector<std::vector<cv::Point3f>> object_points_left, object_points_right;
-  std::vector<std::vector<cv::Point2f>> image_points_left, image_points_right;
-
+auto CalibrationRun::CalculateCalibration() const -> stereo_vision::StereoCameraInfo {
   if (this->config_.report_progress) {
-    std::cout << "Processing images";
-  }
-
-  for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
-    auto const result_left = this->ProcessImage(image_left, "ongoing calibration, left");
-    auto const result_right = this->ProcessImage(image_right, "ongoing calibration, right");
-
-    if (result_left && result_right) {
-      auto const& [opl, ipl] = *result_left;
-      auto const& [opr, ipr] = *result_right;
-      if (opl.size() != opr.size()) {
-        std::cerr << "left & right didn't match the same amount of points (" << opl.size() << " vs. " << opr.size() << ") => skipping" << std::endl;
-        continue;
-      }
-      object_points_left.push_back(opl);
-      image_points_left.push_back(ipl);
-      object_points_right.push_back(opr);
-      image_points_right.push_back(ipr);
-    }
-
-    if (this->config_.report_progress) {
-      std::cout << ".";
-    }
-  }
-
-  if (this->config_.report_progress) {
-    std::cout << " done" << std::endl;
-    std::cout << "Calculating using " << object_points_left.size() << " usable images...";
+    std::cout << "Calculating using " << this->object_points_left_.size() << " usable images...";
   }
 
   auto const flags = cv::CALIB_FIX_K3 | cv::CALIB_FIX_K4 | cv::CALIB_FIX_K5 | cv::CALIB_FIX_K6 | cv::CALIB_ZERO_TANGENT_DIST;
   cv::Mat camera_matrix_left, camera_matrix_right, dist_coeffs_left, dist_coeffs_right, R, T, E, F, per_view_errors;
-  auto const reprojection_error = cv::stereoCalibrate(object_points_left, image_points_left, image_points_right, camera_matrix_left, dist_coeffs_left, camera_matrix_right, dist_coeffs_right, this->image_size_, R, T, E, F, per_view_errors, flags);
+  auto const reprojection_error = cv::stereoCalibrate(this->object_points_left_, this->image_points_left_, this->image_points_right_, camera_matrix_left, dist_coeffs_left, camera_matrix_right, dist_coeffs_right, this->image_size_, R, T, E, F, per_view_errors, flags);
 
   if (this->config_.report_progress) {
     std::cout << " done" << std::endl;
@@ -276,6 +276,22 @@ auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, 
     .F = F,
     .reprojection_error = reprojection_error,
   };
+}
+
+auto CalibrationRun::RunCalibration(std::ranges::range auto const& images_left, std::ranges::range auto const& images_right) -> stereo_vision::StereoCameraInfo {
+  if (this->config_.report_progress) {
+    std::cout << "Processing images";
+  }
+
+  for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
+    this->ProcessImagePair(image_left, image_right);
+  }
+
+  if (this->config_.report_progress) {
+    std::cout << " done" << std::endl;
+  }
+
+  return this->CalculateCalibration();
 }
 
 bool ReadYesNoFromConsole() {
