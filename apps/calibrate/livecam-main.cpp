@@ -34,7 +34,7 @@ int main(int const argc, char const * const argv[]) {
       .show_images = true,
       .wait_time = 1,
     };
-    auto const board_information = stereo_vision::calibration::LoadBoardInformationFromConfigFile(path / "config.yml");
+    auto const board_information = stereo_vision::calibration::BoardInformation::LoadFromConfigFile(path / "config.yml");
     std::cout << board_information;
 
     stereo_vision::calibration::CalibrationRun calibration_run{config, board_information};

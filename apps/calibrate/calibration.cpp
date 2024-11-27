@@ -40,8 +40,7 @@ namespace stereo_vision::calibration {
     }
   }
 
-  /// Small wrapper to read `BoardInformation` from the specified config file.
-  BoardInformation LoadBoardInformationFromConfigFile(std::filesystem::path const& config_file_path) {
+  BoardInformation BoardInformation::LoadFromConfigFile(std::filesystem::path const& config_file_path) {
     BoardInformation board_information;
     cv::FileStorage config_file{config_file_path.string(), cv::FileStorage::READ};
     config_file["board"] >> board_information;

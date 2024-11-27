@@ -28,10 +28,10 @@ namespace stereo_vision::calibration {
     /// Whether the board is using the legacy pattern (starting with a white square in the top-left corner).
     /// See `cv::aruco::CharucoBoard::setLegacyPattern` for more details.
     bool legacy_pattern;
-  };
 
-  /// Small wrapper to read `BoardInformation` from the specified config file.
-  BoardInformation LoadBoardInformationFromConfigFile(std::filesystem::path const& config_file_path);
+    /// Small wrapper to read `BoardInformation` from the specified config file.
+    static BoardInformation LoadFromConfigFile(std::filesystem::path const& config_file_path);
+  };
 
   void OptionallyStoreCalibrationResult(StereoCameraInfo const& stereo_camera_info, std::filesystem::path const& calibration_result_file_path);
 
