@@ -69,6 +69,9 @@ public:
   [[nodiscard]]
   auto RunCalibration(std::filesystem::path const& image_folder_path) -> stereo_vision::StereoCameraInfo;
 
+  [[nodiscard]]
+  auto RunCalibration(std::filesystem::path const& folder_path, cv::VideoCapture& cap_left, cv::VideoCapture& cap_right) -> stereo_vision::StereoCameraInfo;
+
   /**
    * Run a calibration based on a range of images.
    * @param images_left  A range of images for the left camera. Must be sorted the same way as the images for the right camera, otherwise the calibration will fail!

@@ -141,6 +141,34 @@ auto CalibrationRun::RunCalibration(std::filesystem::path const& image_folder_pa
   return this->RunCalibration(images_left, images_right);
 };
 
+auto CalibrationRun::RunCalibration(std::filesystem::path const& folder_path, cv::VideoCapture& cap_left, cv::VideoCapture& cap_right) -> stereo_vision::StereoCameraInfo {
+  size_t i = 0;
+  while (true) {
+    cv::Mat image_left, image_right;
+    cap_left >> image_left;
+    cap_right >> image_right;
+    auto const key = cv::pollKey();
+    if (key == 'q') {
+      break;
+    }
+    if (key != ' ') {
+      ShowImage("ongoing calibration, left", image_left);
+      ShowImage("ongoing calibration, right", image_right);
+      continue;
+    }
+
+    auto path_left = folder_path / "left" / std::format("{:0>3d}.jpg", i);
+    cv::imwrite(path_left.string(), image_left);
+    auto path_right = folder_path / "right" / std::format("{:0>3d}.jpg", i);
+    cv::imwrite(path_right.string(), image_right);
+    ++i;
+
+    this->ProcessImagePair(image_left, image_right);
+  }
+
+  return this->CalculateCalibration();
+}
+
 auto CalibrationRun::CalculateCalibration() const -> stereo_vision::StereoCameraInfo {
   if (this->config_.report_progress) {
     std::cout << "Calculating using " << this->object_points_left_.size() << " usable images...";
