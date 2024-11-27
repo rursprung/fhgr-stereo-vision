@@ -25,19 +25,19 @@ int main(int const argc, char const * const argv[]) {
   try {
     auto const path = GetDirectoryPathFromArgs(argc, argv);
 
-    CalibrationRun::Config config{
+    stereo_vision::calibration::CalibrationRun::Config config{
       .show_images = true,
       .wait_time = 1,
     };
-    auto const board_information = LoadBoardInformationFromConfigFile(path / "config.yml");
+    auto const board_information = stereo_vision::calibration::LoadBoardInformationFromConfigFile(path / "config.yml");
     std::cout << board_information;
 
-    CalibrationRun calibration_run{config, board_information};
+    stereo_vision::calibration::CalibrationRun calibration_run{config, board_information};
 
     auto const stereo_camera_info = calibration_run.RunCalibration(path);
     std::cout << "Calibration result:" << std::endl << stereo_camera_info << std::endl;
 
-    OptionallyStoreCalibrationResult(stereo_camera_info, path / "calibration.yml");
+    stereo_vision::calibration::OptionallyStoreCalibrationResult(stereo_camera_info, path / "calibration.yml");
 
     auto const calibration_result_file_path = path / "calibration.yml";
   } catch (std::exception const& ex) {
