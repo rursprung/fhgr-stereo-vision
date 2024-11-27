@@ -1,4 +1,3 @@
-#include <gcc-bug-117560-workaround.hpp>
 
 #include "calibration.hpp"
 

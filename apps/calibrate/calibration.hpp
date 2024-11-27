@@ -8,6 +8,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <gcc-bug-117560-workaround.hpp>
+
 #include <stereo-vision-lib/StereoCameraInfo.hpp>
 
 namespace stereo_vision::calibration {
