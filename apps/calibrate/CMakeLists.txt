@@ -1,6 +1,6 @@
 find_package(OpenCV CONFIG REQUIRED)
 
-add_executable(stereo-vision-calibrate main.cpp)
+add_executable(stereo-vision-calibrate main.cpp CalibrationRun.cpp)
 
 target_include_directories(
         stereo-vision-calibrate
