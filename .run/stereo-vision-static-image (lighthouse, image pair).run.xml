@@ -1,7 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="stereo-vision-static-image (lighthouse, image pair)" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="$ContentRoot$/resources/calibration/lighthouse-simulation/left/000.png $ContentRoot$/resources/calibration/lighthouse-simulation/right/000.png $ContentRoot$/resources/calibration/lighthouse-simulation/calibration.yml" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="stereo_vision" TARGET_NAME="stereo-vision-static-image" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="stereo_vision" RUN_TARGET_NAME="stereo-vision-static-image">
-    <method v="2">
-      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-    </method>
-  </configuration>
-</component>

@@ -49,6 +49,8 @@ namespace stereo_vision {
     cv::Mat const left_image;
     /// The rectified image from the right camera.
     cv::Mat const right_image;
+    /// The disparity map shows how far a pixel in the right-hand image is shifted compared to the left-hand image.
+    cv::Mat const disparity_map;
   };
 
   /// Print detailed information about the result to an output stream.
@@ -65,7 +67,7 @@ namespace stereo_vision {
     explicit StereoVision(Settings settings);
 
     /**
-     * Analyse an image for the presence of bananas and their properties.
+     * Analyse the images for the measurement of the depicted object.
      *
      * @param left_image the left image of the stereo cameras, taken at the same time as `right_image`.
      * @param right_image the right image of the stereo cameras, taken at the same time as `left_image`.
@@ -86,6 +88,14 @@ namespace stereo_vision {
     std::pair<cv::Mat, cv::Mat>  undistort_rectify_map_right;
 
     /**
+    * Scales the incoming image to the given width
+    * @param width for the rescaling
+    * @param image to rescale.
+    */
+    [[nodiscard]]
+    auto rescaleImage(auto width, auto const& image) const -> cv::Mat;
+
+    /**
      * Rectify a stereo image pair.
      *
      * @param left_image The unrectified left image.
@@ -94,6 +104,24 @@ namespace stereo_vision {
      */
     [[nodiscard]]
     auto RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::tuple<cv::Mat, cv::Mat>;
+
+    /**
+    * Calculates a disparity Map from a stereo image pair.
+    *
+    * @param left_image The rectified left image.
+    * @param right_image The rectified right image.
+    * @return A tuple with the rectified image pair. The first value is the left image, the second the right.
+    */
+    [[nodiscard]]
+    auto CalculateDisparityMap(cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+
+    /**
+    * Calculates the real Distance in front of the camera from a disparity map.
+    *
+    * @param Disparity map.
+    */
+    [[nodiscard]]
+    auto CalculateDistanceMap(cv::Mat const& disparity) const -> cv::Mat;
   };
 
 } // namespace stereo_vision

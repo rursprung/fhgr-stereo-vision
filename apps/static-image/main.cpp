@@ -159,6 +159,7 @@ int main(int const argc, char const * const argv[]) {
       [&](FolderPath const& arg) { ProcessFolderPath(arg); },
       [&](ImagePath const& arg) { ProcessImagePath(arg); },
     }, input_path);
+
   } catch (std::exception const& ex) {
     std::cerr << ex.what() << std::endl;
     std::cerr << "Usage:" << std::endl;
