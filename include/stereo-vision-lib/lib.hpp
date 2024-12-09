@@ -116,12 +116,29 @@ namespace stereo_vision {
     auto CalculateDisparityMap(cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
 
     /**
-    * Calculates the real Distance in front of the camera from a disparity map.
+    * Finds the given patch in the Right image and calculates the disparity.
+    *
+    * @param Patch in left image.
+    */
+    [[nodiscard]]
+    auto FindAssociatedMatch(std::vector<cv::Point> const& searchPoint, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+
+    /**
+    * Calculates the real Distance in front of the camera.
     *
     * @param Disparity map.
     */
     [[nodiscard]]
     auto CalculateDistanceMap(cv::Mat const& disparity) const -> cv::Mat;
+
+      /**
+      * Calculates the real Distance between two points in the image.
+      *
+      * @param First point.
+      * @param Second point.
+      */
+      [[nodiscard]]
+      auto PointToPointDistance(cv::Point const& firstPoint, cv::Point const& secondPoint, cv::Mat const& disparity) const -> float;
   };
 
 } // namespace stereo_vision

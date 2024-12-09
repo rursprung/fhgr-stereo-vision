@@ -39,6 +39,8 @@ namespace stereo_vision {
     /// 3x3 Fundametal matrix.
     /// See `cv::stereoCalibrate` for more details.
     cv::Mat F;
+    /// Reprojection matrix
+    cv::Mat Q = cv::Mat::zeros(4, 4, CV_64F);
     /// The reprojection error calculated by the calibration. Not needed for rectification but informs about the quality
     /// of the calibration. See `cv::stereoRectify` for more details.
     double reprojection_error;
