@@ -102,13 +102,14 @@ namespace stereo_vision::calibration {
      * Find the ChArUco board in an image and calculate the object points and image points.
      * @param image The image to be processed. Must already be rectified.
      * @param window_title Title of the window in case the `show_images` config option is enabled (unused otherwise).
+     * @param show_only Whether only the visualisation should be done but no object points are being matched and consequently nothing is being returned.
      * @return A tuple containing the object points and image points discovered in the image or `std::nullopt` if no
      *         ChArUco board was found or it was found incomplete (this is not considered an error but the image must be ignored).
      */
     [[nodiscard]]
-    auto ProcessImage(cv::Mat const& image, std::string const& window_title) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>>;
+    auto ProcessImage(cv::Mat const& image, std::string const& window_title, bool show_only = false) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>>;
 
-    void ProcessImagePair(cv::Mat const& image_left, cv::Mat const& image_right);
+    void ProcessImagePair(cv::Mat const& image_left, cv::Mat const& image_right, bool show_only = false);
 
     [[nodiscard]]
     auto CalculateCalibration() const -> StereoCameraInfo;

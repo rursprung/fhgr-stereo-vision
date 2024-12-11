@@ -55,7 +55,7 @@ namespace stereo_vision::calibration {
     this->board_.setLegacyPattern(board_information.legacy_pattern);
   };
 
-  auto CalibrationRun::ProcessImage(cv::Mat const& image, std::string const& window_title) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>> {
+  auto CalibrationRun::ProcessImage(cv::Mat const& image, std::string const& window_title, bool const show_only) -> std::optional<std::tuple<std::vector<cv::Point3f>, std::vector<cv::Point2f>>> {
     auto const& board = this->board_detector_.getBoard();
 
     if (this->config_.report_progress) {
@@ -83,6 +83,9 @@ namespace stereo_vision::calibration {
       ShowImage(window_title, image);
       cv::waitKey(this->config_.wait_time);
     }
+    if (show_only) {
+      return std::nullopt;
+    }
 
     if(marker_ids.empty() || current_charuco_ids.empty() || current_charuco_corners.size() < 3) {
       if (marker_ids.empty() && !this->board_information_.legacy_pattern) {
@@ -102,9 +105,9 @@ namespace stereo_vision::calibration {
     return {{current_object_points, current_image_points}};
   }
 
-  void CalibrationRun::ProcessImagePair(cv::Mat const& image_left, cv::Mat const& image_right) {
-    auto const result_left = this->ProcessImage(image_left, "ongoing calibration, left");
-    auto const result_right = this->ProcessImage(image_right, "ongoing calibration, right");
+  void CalibrationRun::ProcessImagePair(cv::Mat const& image_left, cv::Mat const& image_right, bool const show_only) {
+    auto const result_left = this->ProcessImage(image_left, "ongoing calibration, left", show_only);
+    auto const result_right = this->ProcessImage(image_right, "ongoing calibration, right", show_only);
 
     if (result_left && result_right) {
       auto const& [opl, ipl] = *result_left;
@@ -151,19 +154,17 @@ namespace stereo_vision::calibration {
       if (key == 'q') {
         break;
       }
-      if (key != ' ') {
-        ShowImage("ongoing calibration, left", image_left);
-        ShowImage("ongoing calibration, right", image_right);
-        continue;
+      auto show_only = key == ' ';
+
+      if (!show_only) {
+        auto path_left = folder_path / "left" / std::format("{:0>3d}.jpg", i);
+        cv::imwrite(path_left.string(), image_left);
+        auto path_right = folder_path / "right" / std::format("{:0>3d}.jpg", i);
+        cv::imwrite(path_right.string(), image_right);
+        ++i;
       }
 
-      auto path_left = folder_path / "left" / std::format("{:0>3d}.jpg", i);
-      cv::imwrite(path_left.string(), image_left);
-      auto path_right = folder_path / "right" / std::format("{:0>3d}.jpg", i);
-      cv::imwrite(path_right.string(), image_right);
-      ++i;
-
-      this->ProcessImagePair(image_left, image_right);
+      this->ProcessImagePair(image_left, image_right, show_only);
     }
 
     return this->CalculateCalibration();
