@@ -50,12 +50,17 @@ namespace stereo_vision {
     auto const right_image_rescaled = this->rescaleImage(this->settings_.stereo_camera_info.image_size.width, right_image);
 
     auto const& [left_image_rectified, right_image_rectified] = this->RectifyImages(left_image_rescaled, right_image_rescaled);
-    //auto disparity = this-> CalculateDisparityMap(left_image_rectified, right_image_rectified);
     std::vector<cv::Point> searchPoints = {cv::Point(330, 350), cv::Point(430, 350)};
+    //auto disparity = this-> CalculateDisparityMap(left_image_rectified, right_image_rectified);
     auto disparity = this-> FindAssociatedMatch(searchPoints, left_image_rectified, right_image_rectified);
-    auto distance = this-> CalculateDistanceMap(disparity);
-    std::cout << "depth map: " << distance.at<float>(searchPoints[0]) << std::endl;
-    std::cout << "depth map: " << distance.at<float>(searchPoints[1]) << std::endl;
+    std::cout << "Disparity P1: " << disparity.at<int16_t>(searchPoints[0]) << std::endl;
+    std::cout << "Disparity P2: " << disparity.at<int16_t>(searchPoints[1]) << std::endl;
+    auto disparityORB = this-> FeatureExtraction(searchPoints, left_image_rectified, right_image_rectified);
+    std::cout << "Disparity with ORB P1: " << disparityORB.at<int16_t>(searchPoints[0]) << std::endl;
+    std::cout << "Disparity with ORB P2: " << disparityORB.at<int16_t>(searchPoints[1]) << std::endl;
+    auto distance = this->CalculateDepthMapSimple(disparity);
+    std::cout << "depth map P1: " << distance.at<float>(searchPoints[0]) << std::endl;
+    std::cout << "depth map P2: " << distance.at<float>(searchPoints[1]) << std::endl;
     auto distanceToPoint = this-> PointToPointDistance(searchPoints[0], searchPoints[1], disparity);
 
     return {{
@@ -94,19 +99,19 @@ namespace stereo_vision {
     cv::Mat right_image_filtered;
     //cv::medianBlur(left_image_rectified, left_image_filtered, 5);
     //cv::medianBlur(right_image_rectified, right_image_filtered, 5);
-    //auto kernelGauss = cv::Size(5, 5);
-    //cv::GaussianBlur(left_image_rectified, left_image_filtered, kernelGauss, 1.4);
-    //cv::GaussianBlur(right_image_rectified, right_image_filtered, kernelGauss, 1.4);
-    cv::bilateralFilter(left_image_rectified, left_image_filtered, 9, 75, 75);
-    cv::bilateralFilter(right_image_rectified, right_image_filtered, 9, 75, 75);
+    auto kernelGauss = cv::Size(11, 11);
+    cv::GaussianBlur(left_image_rectified, left_image_filtered, kernelGauss, 1.4);
+    cv::GaussianBlur(right_image_rectified, right_image_filtered, kernelGauss, 1.4);
+    //cv::bilateralFilter(left_image_rectified, left_image_filtered, 9, 75, 75);
+    //cv::bilateralFilter(right_image_rectified, right_image_filtered, 9, 75, 75);
 
     cv::Mat left_gray, right_gray;
     cv::cvtColor(left_image_filtered, left_gray, cv::COLOR_BGR2GRAY);
     cv::cvtColor(right_image_filtered, right_gray, cv::COLOR_BGR2GRAY);
 
-    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2.0, cv::Size(8, 8));
-    clahe->apply(left_gray, left_gray);
-    clahe->apply(right_gray, right_gray);
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(1.5, cv::Size(8, 8));
+    //clahe->apply(left_gray, left_gray);
+    //clahe->apply(right_gray, right_gray);
 
     cv::Mat sharpening_kernel = (cv::Mat_<float>(3, 3) << 0, -1, 0, -1, 5, -1, 0, -1, 0);
     cv::filter2D(left_gray, left_gray, left_gray.depth(), sharpening_kernel);
@@ -116,20 +121,23 @@ namespace stereo_vision {
     cv::imshow("filtered Image right", right_gray);
 
     cv::Ptr<cv::StereoSGBM> stereo = cv::StereoSGBM::create();
-    stereo->setBlockSize(5);
+    stereo->setBlockSize(7);
     stereo->setMinDisparity(0);
-    stereo->setNumDisparities(12 * 16);
-    stereo->setSpeckleRange(32);
-    stereo->setSpeckleWindowSize(150);
+    stereo->setNumDisparities(14 * 16 - stereo->getMinDisparity());
+    stereo->setSpeckleRange(2);
+    stereo->setSpeckleWindowSize(0);
     stereo->setUniquenessRatio(15);
-    stereo->setPreFilterCap(15);
+    stereo->setPreFilterCap(32);
     stereo->setDisp12MaxDiff(1);
+    stereo->setP1(8 * stereo->getBlockSize() * stereo->getBlockSize());
+    stereo->setP2(32 * stereo->getBlockSize() * stereo->getBlockSize());
+    stereo->setMode(cv::StereoSGBM::MODE_HH4);
 
     cv::Mat disparity;
     stereo->compute(left_gray, right_gray, disparity);
 
     disparity.setTo(cv::Scalar(0), disparity == -1);
-    //cv::filterSpeckles(disparity, 0, 50, 8);
+    cv::filterSpeckles(disparity, 0, 150, 32);
 
     cv::Mat kernelMorph = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     cv::morphologyEx(disparity, disparity, cv::MORPH_CLOSE, kernelMorph);
@@ -151,9 +159,8 @@ namespace stereo_vision {
           cv::Mat patch = left_image_rectified(roi_left);
 
           // create a search area for the right side
-          int search_range = right_image_rectified.rows; // Maximaler Suchbereich in x-Richtung
-          cv::Rect roi_right(searchPoint.x - search_range, searchPoint.y - patch_size, 2 * search_range, 2 * patch_size);
-          roi_right = roi_right & cv::Rect(0, 0, right_image_rectified.rows, right_image_rectified.cols); // Begrenze ROI
+          cv::Rect roi_right(0, searchPoint.y - patch_size / 2, searchPoint.x + patch_size / 2, patch_size);
+          roi_right = roi_right & cv::Rect(0, 0, right_image_rectified.rows, right_image_rectified.cols);
 
           // search for the associated area
           cv::Mat search_area = right_image_rectified(roi_right);
@@ -166,25 +173,92 @@ namespace stereo_vision {
           cv::minMaxLoc(result, &min_val, &max_val, &min_loc, &max_loc);
           cv::Point foundedPoint(roi_right.x + max_loc.x + patch_size / 2, roi_right.y + max_loc.y + patch_size / 2);
 
-          //disparity.push_back(cv::Mat(1, 1, CV_16S, cv::Scalar(searchPoint.x - foundedPoint.x)));
           disparity.at<int16_t>(searchPoint) = searchPoint.x - foundedPoint.x;
 
           cv::rectangle(left_image_rectified, roi_left, cv::Scalar(0, 255, 0), 2);
           //cv::rectangle(right_image_rectified, roi_right, cv::Scalar(0, 255, 0), 2);
           cv::Rect roi_founded(foundedPoint.x - patch_size / 2, foundedPoint.y - patch_size / 2, patch_size, patch_size);
-          cv::rectangle(right_image_rectified, roi_founded, cv::Scalar(0, 0, 255), 2);
+          cv::rectangle(right_image_rectified, roi_founded, cv::Scalar(0, 255, 0), 2);
       }
-
-      //std::cout << "disparity P1: " << disparity.at<int16_t>(searchPoints[0]) << std::endl;
-      //std::cout << "disparity P2: " << disparity.at<int16_t>(searchPoints[1]) << std::endl;
 
       return disparity;
   }
 
-  auto StereoVision::CalculateDistanceMap(cv::Mat const& disparity) const -> cv::Mat {
+  auto StereoVision::FeatureExtraction(std::vector<cv::Point> const& searchPoints, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat {
+      cv::Ptr<cv::ORB> orb = cv::ORB::create();
+
+      std::vector<cv::KeyPoint> kpLeft, kpRight;
+      cv::Mat desLeft, desRight;
+      orb->detectAndCompute(left_image_rectified, cv::noArray(), kpLeft, desLeft);
+      orb->detectAndCompute(right_image_rectified, cv::noArray(), kpRight, desRight);
+
+      cv::BFMatcher matcher(cv::NORM_HAMMING, true);
+
+      std::vector<cv::DMatch> matches;
+      matcher.match(desLeft, desRight, matches);
+
+      std::sort(matches.begin(), matches.end(), [](const cv::DMatch& a, const cv::DMatch& b) {
+          return a.distance < b.distance;
+      });
+
+      const float deltaYThreshold = 3.0f; // Maximum difference in y coordinate
+      std::vector<cv::DMatch> horizontalMatches;
+
+      for (const auto& match : matches) {
+          const cv::Point2f& ptLeft = kpLeft[match.queryIdx].pt;
+          const cv::Point2f& ptRight = kpRight[match.trainIdx].pt;
+
+          // Check if the y-coordinates are horizontal
+          if (std::abs(ptLeft.y - ptRight.y) <= deltaYThreshold) {
+              horizontalMatches.push_back(match);
+          }
+      }
+
+      if (horizontalMatches.empty()) {
+          std::cerr << "No valid horizontal match." << std::endl;
+      }
+
+      cv::Mat imgBestMatch;
+      std::vector<cv::DMatch> bestMatches;
+      std::vector<cv::KeyPoint> KeyPointsLeft;
+      std::vector<cv::KeyPoint> KeyPointsRight;
+      cv::Mat disparity = cv::Mat::zeros(left_image_rectified.size(), CV_16S);
+
+      for(auto searchPoint: searchPoints) {
+          auto minDistance = std::numeric_limits<double>::max();
+          cv::DMatch bestMatch;
+
+          for (const auto &match: horizontalMatches) {
+              const cv::Point2f &ptLeft = kpLeft[match.queryIdx].pt;
+              auto distance = cv::norm(ptLeft - cv::Point2f(searchPoint));
+
+              if (distance < minDistance) {
+                  minDistance = distance;
+                  bestMatch = match;
+              }
+          }
+
+          KeyPointsLeft.push_back(cv::KeyPoint(kpLeft[bestMatch.queryIdx].pt, 1.0f));
+          KeyPointsRight.push_back(cv::KeyPoint(kpRight[bestMatch.trainIdx].pt, 1.0f));
+          cv::DMatch Match(KeyPointsLeft.size() - 1, KeyPointsRight.size() - 1, bestMatch.distance);
+          bestMatches.push_back(Match);
+
+          disparity.at<int16_t>(searchPoint) = static_cast<int16_t>(kpLeft[bestMatch.queryIdx].pt.x - kpRight[bestMatch.trainIdx].pt.x);
+      }
+
+      cv::drawMatches(left_image_rectified, KeyPointsLeft, right_image_rectified, KeyPointsRight,
+                      bestMatches, imgBestMatch);
+      cv::imshow("Best Match to the given Point", imgBestMatch);
+
+      return disparity;
+  }
+
+  auto StereoVision::CalculateDepthMapSimple(cv::Mat const& disparity) const -> cv::Mat {
       cv::Mat depth(disparity.size(), CV_32F);
-      auto baseline = std::abs(this->settings_.stereo_camera_info.T.at<double>(0, 0));   // in millimeters
-      auto focal_length = this->settings_.stereo_camera_info.camera_matrix_left.at<double>(0, 0);   // in pixel
+      auto baseline = static_cast<float>(std::abs(this->settings_.stereo_camera_info.T.at<double>(0, 0)));   // in millimeters
+      auto focal_length = static_cast<float>(this->settings_.stereo_camera_info.camera_matrix_left.at<double>(0, 0));   // in pixel
+      std::cout << "Baseline: " << baseline << std::endl;
+      std::cout << "Focal Length: " << focal_length << std::endl;
 
       for (int y = 0; y < disparity.rows; ++y) {
           for (int x = 0; x < disparity.cols; ++x) {
@@ -203,13 +277,13 @@ namespace stereo_vision {
       cv::Vec3f point1 = points3D.at<cv::Vec3f>(firstPoint);
       cv::Vec3f point2 = points3D.at<cv::Vec3f>(secondPoint.y, secondPoint.x);
 
-      auto distance = std::sqrt(std::pow(point2[0] - point1[0], 2)
+      auto distance = static_cast<float>(std::sqrt(std::pow(point2[0] - point1[0], 2)
                                 + std::pow(point2[1] - point1[1], 2)
-                                + std::pow(point2[2] - point1[2], 2));
+                                + std::pow(point2[2] - point1[2], 2)));
 
       std::cout << "3D Point 1: (" << point1[0] << ", " << point1[1] << ", " << point1[2] << ")" << std::endl;
       std::cout << "3D Point 2: (" << point2[0] << ", " << point2[1] << ", " << point2[2] << ")" << std::endl;
-      std::cout << distance << std::endl;
+      std::cout << "Distance between the two points: " << distance << " mm" << std::endl;
 
       return distance;
   }

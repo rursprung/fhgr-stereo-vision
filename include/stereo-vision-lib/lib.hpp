@@ -118,10 +118,22 @@ namespace stereo_vision {
     /**
     * Finds the given patch in the Right image and calculates the disparity.
     *
-    * @param Patch in left image.
+    * @param Image left.
+    * @param Image right.
+    * @param Points to be found in the right image.
     */
     [[nodiscard]]
-    auto FindAssociatedMatch(std::vector<cv::Point> const& searchPoint, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+    auto FindAssociatedMatch(std::vector<cv::Point> const& searchPoints, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+
+    /**
+    * Finds the same features in the left and Right image and calculates the disparity between them.
+    *
+    * @param Image left.
+    * @param Image right.
+    * @param Points to search features around them.
+    */
+    [[nodiscard]]
+    auto FeatureExtraction(std::vector<cv::Point> const& searchPoints, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
 
     /**
     * Calculates the real Distance in front of the camera.
@@ -129,13 +141,14 @@ namespace stereo_vision {
     * @param Disparity map.
     */
     [[nodiscard]]
-    auto CalculateDistanceMap(cv::Mat const& disparity) const -> cv::Mat;
+    auto CalculateDepthMapSimple(cv::Mat const& disparity) const -> cv::Mat;
 
       /**
       * Calculates the real Distance between two points in the image.
       *
       * @param First point.
       * @param Second point.
+      * @param Disparity Map.
       */
       [[nodiscard]]
       auto PointToPointDistance(cv::Point const& firstPoint, cv::Point const& secondPoint, cv::Mat const& disparity) const -> float;
