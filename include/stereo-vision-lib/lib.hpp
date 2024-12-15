@@ -66,6 +66,7 @@ namespace stereo_vision {
       enum class Algorithm {
         kMatchTemplate,
         kORB,
+        kSGBM,
       };
 
       /// The calibration data previously generated using the calibration application.
@@ -163,6 +164,16 @@ namespace stereo_vision {
     */
     [[nodiscard]]
     auto CalculateDisparityUsingFeatureExtractionAtSpecificPoints(std::vector<cv::Point> const& search_points, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+
+    /**
+    * Calculates a disparity map from a stereo image pair.
+    *
+    * @param left_image_rectified the left rectified image.
+    * @param right_image_rectified the right rectified image.
+    * @return the disparity map for the full image.
+    */
+    [[nodiscard]]
+    auto CalculateDisparityMapUsingSGBM(cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
 
   };
 

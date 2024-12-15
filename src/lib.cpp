@@ -65,6 +65,9 @@ namespace stereo_vision {
     case Settings::Algorithm::kORB:
       disparity = this->CalculateDisparityUsingFeatureExtractionAtSpecificPoints({search_points.first, search_points.second}, left_image_rectified, right_image_rectified);
       break;
+    case Settings::Algorithm::kSGBM:
+      disparity = this->CalculateDisparityMapUsingSGBM(left_image_rectified, right_image_rectified);
+      break;
     default:
       std::cerr << "unknown algorithm: " << static_cast<int>(this->settings_.algorithm) << std::endl;
       return std::unexpected{AnalysisError::kInvalidSettings};
@@ -214,6 +217,57 @@ namespace stereo_vision {
       cv::drawMatches(left_image_rectified, key_points_left, right_image_rectified, key_points_right,
                       best_matches, img_best_match);
       cv::imshow("Best Match to the given Point", img_best_match);
+    }
+
+    return disparity;
+  }
+
+  auto StereoVision::CalculateDisparityMapUsingSGBM(cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat {
+    cv::Mat left_image_filtered;
+    cv::Mat right_image_filtered;
+    cv::Size kernel_gauss{11, 11};
+    cv::GaussianBlur(left_image_rectified, left_image_filtered, kernel_gauss, 1.4);
+    cv::GaussianBlur(right_image_rectified, right_image_filtered, kernel_gauss, 1.4);
+
+    cv::Mat left_gray, right_gray;
+    cv::cvtColor(left_image_filtered, left_gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(right_image_filtered, right_gray, cv::COLOR_BGR2GRAY);
+
+    // optionally we can also use CLAHE here to re-sharpen the images:
+    //cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(1.5, cv::Size(8, 8));
+    //clahe->apply(left_gray, left_gray);
+    //clahe->apply(right_gray, right_gray);
+
+    cv::Mat const sharpening_kernel = (cv::Mat_<float>(3, 3) << 0, -1, 0, -1, 5, -1, 0, -1, 0);
+    cv::filter2D(left_gray, left_gray, left_gray.depth(), sharpening_kernel);
+    cv::filter2D(right_gray, right_gray, right_gray.depth(), sharpening_kernel);
+
+    auto stereo = cv::StereoSGBM::create();
+    stereo->setBlockSize(7);
+    stereo->setMinDisparity(0);
+    stereo->setNumDisparities(14 * 16 - stereo->getMinDisparity());
+    stereo->setSpeckleRange(2);
+    stereo->setSpeckleWindowSize(0);
+    stereo->setUniquenessRatio(15);
+    stereo->setPreFilterCap(32);
+    stereo->setDisp12MaxDiff(1);
+    stereo->setP1(8 * stereo->getBlockSize() * stereo->getBlockSize());
+    stereo->setP2(32 * stereo->getBlockSize() * stereo->getBlockSize());
+    stereo->setMode(cv::StereoSGBM::MODE_HH4);
+
+    cv::Mat disparity;
+    stereo->compute(left_gray, right_gray, disparity);
+
+    disparity.setTo(cv::Scalar(0), disparity == -1);
+    cv::filterSpeckles(disparity, 0, 150, 32);
+
+    auto const kernel_morph = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::morphologyEx(disparity, disparity, cv::MORPH_CLOSE, kernel_morph);
+
+    if (this->settings_.show_debug_info) {
+      cv::Mat disparity_normalized;
+      cv::normalize(disparity, disparity_normalized, 0, 255, cv::NORM_MINMAX, CV_8U);
+      cv::imshow("Disparity Map", disparity_normalized);
     }
 
     return disparity;
