@@ -94,7 +94,8 @@ auto GetPathsFromArgs(int const argc, char const *const argv[]) -> path_t {
  * @param right_image image for the rigt camera. must have been taken at the same time as the left image.
  */
 void ProcessImagePair(stereo_vision::StereoVision const& stereo_vis, cv::Mat const& left_image, cv::Mat const& right_image) {
-  auto const& result = stereo_vis.AnalyzeAndAnnotateImage(left_image, right_image);
+  std::pair<cv::Point, cv::Point> const search_points = {{330, 350}, {430, 350}}; // TODO: make this user-selectable
+  auto const& result = stereo_vis.AnalyzeAndAnnotateImage(left_image, right_image, search_points);
 
   if (!result) {
     std::cerr << "Failed to analyze the images: " << result.error().ToString() << std::endl;

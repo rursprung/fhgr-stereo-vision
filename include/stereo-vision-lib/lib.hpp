@@ -2,6 +2,8 @@
 #define STEREO_VISION_LIB_HPP
 
 #include <expected>
+#include <vector>
+#include <utility>
 
 #include <opencv2/opencv.hpp>
 
@@ -49,6 +51,8 @@ namespace stereo_vision {
     cv::Mat const left_image;
     /// The rectified image from the right camera.
     cv::Mat const right_image;
+    /// The 3D reprojected points of the original input points.
+    std::pair<cv::Vec3f, cv::Vec3f> const points_3d;
   };
 
   /// Print detailed information about the result to an output stream.
@@ -79,21 +83,24 @@ namespace stereo_vision {
      *
      * @param left_image the left image of the stereo cameras, taken at the same time as `right_image`.
      * @param right_image the right image of the stereo cameras, taken at the same time as `left_image`.
+     * @param search_points the points between which the distance should be calculated.
      * @return the result of the analysis and the annotated image, see the description of {@link AnalysisResult} for
      * more details.
      */
     [[nodiscard]]
-    auto AnalyzeAndAnnotateImage(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::expected<AnalysisResult, AnalysisError>;
+    auto AnalyzeAndAnnotateImage(cv::Mat const& left_image, cv::Mat const& right_image, std::pair<cv::Point, cv::Point> const& search_points) const -> std::expected<AnalysisResult, AnalysisError>;
 
   private:
     /// All externally configurable settings used by the analyzer.
     Settings const settings_;
     /// Undistortion and rectification transformation map for the left camera.
     /// See `cv::initUndistortRectifyMap` for more details.
-    std::pair<cv::Mat, cv::Mat> undistort_rectify_map_left;
+    std::pair<cv::Mat, cv::Mat> undistort_rectify_map_left_;
     /// Undistortion and rectification transformation map for the right camera.
     /// See `cv::initUndistortRectifyMap` for more details.
-    std::pair<cv::Mat, cv::Mat>  undistort_rectify_map_right;
+    std::pair<cv::Mat, cv::Mat>  undistort_rectify_map_right_;
+    /// Disparity-to-depth mapping matrix (see `cv::stereoRectify` for further details).
+    cv::Mat Q_;
 
     /**
      * Rectify a stereo image pair.
@@ -112,6 +119,26 @@ namespace stereo_vision {
     */
     [[nodiscard]]
     auto RescaleImage(auto const& image) const -> cv::Mat;
+
+    /**
+    * Finds the given patch in the right image and calculates the disparity for each point.
+    *
+    * @param searchPoints Points to be found in the right image.
+    * @param left_image_rectified the left rectified image. this will be modified: the ROI will be painted into it.
+    * @param right_image_rectified the right rectified image. this will be modified: the ROI will be painted into it.
+    * @return the disparity map for the given points. all other points will be set to zero in the disparity map.
+    */
+    [[nodiscard]]
+    auto CalculateDisparityMapAtSpecificPoints(std::vector<cv::Point> const& searchPoints, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+
+    /**
+     * @param points2D the 2D points which should be reprojected to 3D based on
+     * the disparity map.
+     * @param disparity the disparity map used for the reprojection.
+     * @return the reprojected 3D points.
+     */
+    [[nodiscard]]
+    auto Reproject2DPointsTo3D(std::pair<cv::Point, cv::Point> const& points2D, cv::Mat const& disparity) const -> std::pair<cv::Vec3f, cv::Vec3f>;
 
   };
 
