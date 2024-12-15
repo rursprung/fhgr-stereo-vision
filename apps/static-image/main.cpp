@@ -12,6 +12,7 @@
 
 #include <gcc-bug-117560-workaround.hpp>
 #include <stereo-vision-lib/lib.hpp>
+#include "Viewer.hpp"
 
 /// Input parameters if a folder was chosen.
 struct FolderPath {
@@ -87,31 +88,6 @@ auto GetPathsFromArgs(int const argc, char const *const argv[]) -> path_t {
 }
 
 /**
- * Process a single pair of stereo images and show the result, both in the GUI and printed to the console.
- *
- * @param stereo_vis stereo vision algorithm used to process the images.
- * @param left_image image for the left camera. must have been taken at the same time as the right image.
- * @param right_image image for the rigt camera. must have been taken at the same time as the left image.
- */
-void ProcessImagePair(stereo_vision::StereoVision const& stereo_vis, cv::Mat const& left_image, cv::Mat const& right_image) {
-  std::pair<cv::Point, cv::Point> const search_points = {{330, 350}, {430, 350}}; // TODO: make this user-selectable
-  auto const& result = stereo_vis.AnalyzeAndAnnotateImage(left_image, right_image, search_points);
-
-  if (!result) {
-    std::cerr << "Failed to analyze the images: " << result.error().ToString() << std::endl;
-    cv::destroyAllWindows();
-    return;
-  }
-
-  std::cout << "Analysis result:" << std::endl;
-  std::cout << *result << std::endl;
-
-  cv::imshow("left", result->left_image);
-  cv::imshow("right", result->right_image);
-  cv::waitKey();
-}
-
-/**
  * Process a set of images from a folder. One image pair at a time will be processed and the program will wait for a
  * keypress before showing the next.
  *
@@ -133,8 +109,10 @@ void ProcessFolderPath(FolderPath const& folder_path) {
   auto images_left = std::filesystem::directory_iterator{folder_left} | std::views::transform(directory_entry_to_image);
   auto images_right = std::filesystem::directory_iterator{folder_right} | std::views::transform(directory_entry_to_image);
 
+  stereo_vision::Viewer viewer{};
+
   for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
-    ProcessImagePair(stereo_vis, image_left, image_right);
+    viewer.ProcessImagePair(stereo_vis, image_left, image_right);
   }
 }
 
@@ -147,7 +125,7 @@ void ProcessImagePath(ImagePath const& image_path) {
   stereo_vision::StereoVision const stereo_vis{{stereo_vision::LoadStereoCameraInfo(image_path.calibration_file_path)}};
   auto const left_image = cv::imread(image_path.left_path.string(), cv::IMREAD_COLOR);
   auto const right_image = cv::imread(image_path.right_path.string(), cv::IMREAD_COLOR);
-  ProcessImagePair(stereo_vis, left_image, right_image);
+  stereo_vision::Viewer().ProcessImagePair(stereo_vis, left_image, right_image);
 }
 
 int main(int const argc, char const * const argv[]) {
