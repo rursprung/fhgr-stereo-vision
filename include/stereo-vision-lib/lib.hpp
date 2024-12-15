@@ -65,7 +65,17 @@ namespace stereo_vision {
     explicit StereoVision(Settings settings);
 
     /**
-     * Analyse an image for the presence of bananas and their properties.
+     * Rectify a stereo image pair.
+     *
+     * @param left_image The unrectified left image.
+     * @param right_image The unrectified right image.
+     * @return A pair with the rectified image pair. The first value is the left image, the second the right.
+     */
+    [[nodiscard]]
+    auto RescaleAndRectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::pair<cv::Mat, cv::Mat>;
+
+    /**
+     * Analyse the images for the measurement of the depicted object.
      *
      * @param left_image the left image of the stereo cameras, taken at the same time as `right_image`.
      * @param right_image the right image of the stereo cameras, taken at the same time as `left_image`.
@@ -93,7 +103,16 @@ namespace stereo_vision {
      * @return A tuple with the rectified image pair. The first value is the left image, the second the right.
      */
     [[nodiscard]]
-    auto RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::tuple<cv::Mat, cv::Mat>;
+    auto RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::pair<cv::Mat, cv::Mat>;
+
+    /**
+    * Scales the incoming image to the same width as the calibration images.
+    * @param image to rescale
+    * @return the rescaled image
+    */
+    [[nodiscard]]
+    auto RescaleImage(auto const& image) const -> cv::Mat;
+
   };
 
 } // namespace stereo_vision

@@ -41,12 +41,16 @@ namespace stereo_vision {
                                 this->undistort_rectify_map_right.first, this->undistort_rectify_map_right.second);
   }
 
+  auto StereoVision::RescaleAndRectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::pair<cv::Mat, cv::Mat> {
+    return this->RectifyImages(this->RescaleImage(left_image), this->RescaleImage(right_image));
+  }
+
   auto StereoVision::AnalyzeAndAnnotateImage(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::expected<AnalysisResult, AnalysisError> {
     if (left_image.empty() || right_image.empty()) {
       return std::unexpected{AnalysisError::kInvalidImage};
     }
 
-    auto const& [left_image_rectified, right_image_rectified] = this->RectifyImages(left_image, right_image);
+    auto const& [left_image_rectified, right_image_rectified] = this->RescaleAndRectifyImages(left_image, right_image);
 
     return {{
       .left_image = left_image_rectified,
@@ -54,7 +58,7 @@ namespace stereo_vision {
     }};
   }
 
-  auto StereoVision::RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::tuple<cv::Mat, cv::Mat> {
+  auto StereoVision::RectifyImages(cv::Mat const& left_image, cv::Mat const& right_image) const -> std::pair<cv::Mat, cv::Mat> {
     cv::Mat left_image_rectified, right_image_rectified;
     cv::remap(left_image, left_image_rectified, this->undistort_rectify_map_left.first,
               this->undistort_rectify_map_left.second, cv::INTER_LINEAR);
@@ -62,4 +66,15 @@ namespace stereo_vision {
               this->undistort_rectify_map_right.second, cv::INTER_LINEAR);
     return {left_image_rectified, right_image_rectified};
   }
+
+  auto StereoVision::RescaleImage(auto const& image) const -> cv::Mat {
+    if (image.size().width == this->settings_.stereo_camera_info.image_size.width) {
+      return image;
+    }
+
+    cv::Mat out;
+    cv::resize(image, out, {this->settings_.stereo_camera_info.image_size.width, this->settings_.stereo_camera_info.image_size.height}, 0, 0, cv::INTER_LINEAR);
+    return out;
+  }
+
 } // namespace stereo_vision
