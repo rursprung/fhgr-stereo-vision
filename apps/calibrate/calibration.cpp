@@ -147,7 +147,7 @@ namespace stereo_vision::calibration {
       cv::Mat image_left, image_right;
       cap_left >> image_left;
       cap_right >> image_right;
-      auto const key = cv::pollKey();
+      auto const key = cv::pollKey() & 0xFF;
       if (key == 'q') {
         break;
       }

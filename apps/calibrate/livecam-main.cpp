@@ -3,7 +3,7 @@
 #include "calibration.hpp"
 
 [[nodiscard]]
-auto GetDirectoryPathFromArgs(int const argc, char const *const argv[]) -> std::tuple<std::filesystem::path, int, int> {
+auto GetDirectoryPathAndCamerasFromArgs(int const argc, char const *const argv[]) -> std::tuple<std::filesystem::path, int, int> {
   if (argc != 4) {
     throw std::runtime_error(std::format("expected 3 argument but got {}!", argc - 1));
   }
@@ -26,7 +26,7 @@ int main(int const argc, char const * const argv[]) {
   cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_WARNING); // stop OpenCV log spamming
 
   try {
-    auto const [path, cap1_id, cap2_id] = GetDirectoryPathFromArgs(argc, argv);
+    auto const [path, cap1_id, cap2_id] = GetDirectoryPathAndCamerasFromArgs(argc, argv);
 
     cv::VideoCapture cap1(cap1_id), cap2(cap2_id);
 
