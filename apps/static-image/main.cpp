@@ -119,10 +119,10 @@ void ProcessFolderPath(FolderPath const& folder_path) {
   auto images_left = std::filesystem::directory_iterator{folder_left} | std::views::transform(directory_entry_to_image);
   auto images_right = std::filesystem::directory_iterator{folder_right} | std::views::transform(directory_entry_to_image);
 
-  stereo_vision::Viewer viewer{};
+  stereo_vision::Viewer viewer{stereo_vis};
 
   for (auto const& [image_left, image_right] : std::views::zip(images_left, images_right)) {
-    viewer.ProcessImagePair(stereo_vis, image_left, image_right);
+    viewer.ProcessImagePair(image_left, image_right);
   }
 }
 
@@ -135,7 +135,7 @@ void ProcessImagePath(ImagePath const& image_path) {
   auto const stereo_vis = NewStereoVision(image_path.calibration_file_path);
   auto const left_image = cv::imread(image_path.left_path.string(), cv::IMREAD_COLOR);
   auto const right_image = cv::imread(image_path.right_path.string(), cv::IMREAD_COLOR);
-  stereo_vision::Viewer().ProcessImagePair(stereo_vis, left_image, right_image);
+  stereo_vision::Viewer{stereo_vis}.ProcessImagePair(left_image, right_image);
 }
 
 int main(int const argc, char const * const argv[]) {

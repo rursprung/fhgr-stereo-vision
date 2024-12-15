@@ -32,11 +32,11 @@ namespace stereo_vision {
     return std::pair{this->selected_points_.front(), this->selected_points_.back()};
   }
 
-  void Viewer::ProcessImagePair(StereoVision const& stereo_vis, cv::Mat const& left_image, cv::Mat const& right_image) {
-    auto const& images = stereo_vis.RescaleAndRectifyImages(left_image, right_image);
+  void Viewer::ProcessImagePair(cv::Mat const& left_image, cv::Mat const& right_image) {
+    auto const& images = this->stereo_vis_.RescaleAndRectifyImages(left_image, right_image);
     auto const search_points = this->SelectPoints(images);
 
-    auto const& result = stereo_vis.AnalyzeAndAnnotateImage(left_image, right_image, search_points);
+    auto const& result = this->stereo_vis_.AnalyzeAndAnnotateImage(left_image, right_image, search_points);
 
     if (!result) {
       std::cerr << "Failed to analyze the images: " << result.error().ToString() << std::endl;
@@ -46,6 +46,11 @@ namespace stereo_vision {
 
     std::cout << "Analysis result:" << std::endl;
     std::cout << *result << std::endl;
+
+    if (this->stereo_vis_.settings().algorithm != StereoVision::Settings::Algorithm::kMatchTemplate) {
+      cv::circle(result->left_image, this->selected_points_.front(), images.first.size().width / 128, {0, 255, 0}, -1);
+      cv::circle(result->left_image, this->selected_points_.back(), images.first.size().width / 128, {0, 255, 0}, -1);
+    }
 
     cv::imshow("left", result->left_image);
     cv::imshow("right", result->right_image);

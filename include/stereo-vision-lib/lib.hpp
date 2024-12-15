@@ -104,6 +104,10 @@ namespace stereo_vision {
     [[nodiscard]]
     auto AnalyzeAndAnnotateImage(cv::Mat const& left_image, cv::Mat const& right_image, std::pair<cv::Point, cv::Point> const& search_points) const -> std::expected<AnalysisResult, AnalysisError>;
 
+    /// Read the settings used by the analyzer.
+    [[nodiscard]]
+    Settings settings() const { return this->settings_; }
+
   private:
     /// All externally configurable settings used by the analyzer.
     Settings const settings_;
