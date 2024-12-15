@@ -33,8 +33,8 @@ namespace stereo_vision {
         this->settings_.stereo_camera_info.camera_matrix_left, this->settings_.stereo_camera_info.dist_coeffs_left,
         this->settings_.stereo_camera_info.camera_matrix_right, this->settings_.stereo_camera_info.dist_coeffs_right,
         this->settings_.stereo_camera_info.image_size, this->settings_.stereo_camera_info.R,
-        this->settings_.stereo_camera_info.T, R_left, R_right, P_left, P_right, this->Q_, cv::CALIB_ZERO_DISPARITY, 0,
-        this->settings_.stereo_camera_info.image_size);
+        this->settings_.stereo_camera_info.T, R_left, R_right, P_left, P_right, this->Q_, cv::CALIB_ZERO_DISPARITY, 1,
+        this->settings_.stereo_camera_info.image_size, &this->valid_roi_left, &this->valid_roi_right);
 
     cv::initUndistortRectifyMap(this->settings_.stereo_camera_info.camera_matrix_left,
                                 this->settings_.stereo_camera_info.dist_coeffs_left, R_left, P_left,
@@ -90,6 +90,10 @@ namespace stereo_vision {
               this->undistort_rectify_map_left_.second, cv::INTER_LINEAR);
     cv::remap(right_image, right_image_rectified, this->undistort_rectify_map_right_.first,
               this->undistort_rectify_map_right_.second, cv::INTER_LINEAR);
+
+    cv::rectangle(left_image_rectified, this->valid_roi_left, {255, 255, 255}, 3);
+    cv::rectangle(right_image_rectified, this->valid_roi_right, {255, 255, 255}, 3);
+
     return {left_image_rectified, right_image_rectified};
   }
 

@@ -123,6 +123,8 @@ namespace stereo_vision {
     /// Disparity-to-depth mapping matrix (see `cv::stereoRectify` for further details).
     cv::Mat Q_;
 
+    cv::Rect valid_roi_left, valid_roi_right;
+
     /**
      * Rectify a stereo image pair.
      *
