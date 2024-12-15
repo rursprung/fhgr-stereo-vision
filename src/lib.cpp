@@ -8,6 +8,8 @@ namespace stereo_vision {
     switch (this->value_) {
       case kInvalidImage:
         return "invalid image!";
+      case kInvalidSettings:
+        return "Invalid settings!";
       default:
         throw std::runtime_error("unknown AnalysisError type!");
     }
@@ -55,7 +57,18 @@ namespace stereo_vision {
 
     auto const& [left_image_rectified, right_image_rectified] = this->RescaleAndRectifyImages(left_image, right_image);
 
-    auto const disparity = this->CalculateDisparityMapAtSpecificPoints({search_points.first, search_points.second}, left_image_rectified, right_image_rectified);
+    cv::Mat disparity;
+    switch (this->settings_.algorithm) {
+    case Settings::Algorithm::kMatchTemplate:
+      disparity = this->CalculateDisparityMapAtSpecificPoints({search_points.first, search_points.second}, left_image_rectified, right_image_rectified);;
+      break;
+    case Settings::Algorithm::kORB:
+      disparity = this->CalculateDisparityUsingFeatureExtractionAtSpecificPoints({search_points.first, search_points.second}, left_image_rectified, right_image_rectified);
+      break;
+    default:
+      std::cerr << "unknown algorithm: " << static_cast<int>(this->settings_.algorithm) << std::endl;
+      return std::unexpected{AnalysisError::kInvalidSettings};
+    }
     auto const& search_3d_points = this->Reproject2DPointsTo3D(search_points, disparity);
 
     return {{
@@ -85,14 +98,14 @@ namespace stereo_vision {
   }
 
   auto StereoVision::CalculateDisparityMapAtSpecificPoints(
-      std::vector<cv::Point> const &searchPoints,
+      std::vector<cv::Point> const &search_points,
       cv::Mat const &left_image_rectified,
       cv::Mat const &right_image_rectified) const -> cv::Mat {
     // define the left search roi
     auto const patch_size = (left_image_rectified.size().width / 20) & ~1; // see https://stackoverflow.com/a/4360378 for ~1
     cv::Mat disparity = cv::Mat::zeros(left_image_rectified.size(), CV_16S);
 
-    for (auto searchPoint : searchPoints) {
+    for (auto searchPoint : search_points) {
       cv::Rect const roi_left{searchPoint.x - patch_size / 2,
                               searchPoint.y - patch_size / 2, patch_size,
                               patch_size};
@@ -134,6 +147,76 @@ namespace stereo_vision {
     cv::Mat points3D;
     cv::reprojectImageTo3D(disparity, points3D, this->Q_, true);
     return {points3D.at<cv::Vec3f>(points2D.first), points3D.at<cv::Vec3f>(points2D.second)};
+  }
+
+  auto StereoVision::CalculateDisparityUsingFeatureExtractionAtSpecificPoints(std::vector<cv::Point> const& search_points, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat {
+    auto orb = cv::ORB::create();
+
+    std::vector<cv::KeyPoint> kp_left, kp_right;
+    cv::Mat descriptors_left, descriptors_right;
+    orb->detectAndCompute(left_image_rectified, cv::noArray(), kp_left, descriptors_left);
+    orb->detectAndCompute(right_image_rectified, cv::noArray(), kp_right, descriptors_right);
+
+    cv::BFMatcher matcher{cv::NORM_HAMMING, true};
+
+    std::vector<cv::DMatch> matches;
+    matcher.match(descriptors_left, descriptors_right, matches);
+
+    std::sort(matches.begin(), matches.end(), [](const cv::DMatch& a, const cv::DMatch& b) {
+      return a.distance < b.distance;
+    });
+
+    auto const delta_y_threshold = 3.0f; // Maximum difference in y coordinate
+    std::vector<cv::DMatch> horizontal_matches;
+
+    for (auto const& match : matches) {
+      auto const& ptLeft = kp_left[match.queryIdx].pt;
+      auto const& ptRight = kp_right[match.trainIdx].pt;
+
+      // Check if the y-coordinates are horizontal
+      if (std::abs(ptLeft.y - ptRight.y) <= delta_y_threshold) {
+        horizontal_matches.push_back(match);
+      }
+    }
+
+    if (horizontal_matches.empty()) {
+      std::cerr << "No valid horizontal match." << std::endl;
+      return {};
+    }
+
+    std::vector<cv::DMatch> best_matches;
+    std::vector<cv::KeyPoint> key_points_left, key_points_right;
+    cv::Mat disparity = cv::Mat::zeros(left_image_rectified.size(), CV_16S);
+
+    for(auto const& searchPoint: search_points) {
+      auto min_distance = std::numeric_limits<double>::max();
+      cv::DMatch best_match;
+
+      for (const auto &match: horizontal_matches) {
+        const cv::Point2f &point_left = kp_left[match.queryIdx].pt;
+        auto distance = cv::norm(point_left - cv::Point2f(searchPoint));
+
+        if (distance < min_distance) {
+          min_distance = distance;
+          best_match = match;
+        }
+      }
+
+      key_points_left.emplace_back(kp_left[best_match.queryIdx].pt, 1.0f);
+      key_points_right.emplace_back(kp_right[best_match.trainIdx].pt, 1.0f);
+      best_matches.emplace_back(static_cast<int>(key_points_left.size() - 1), static_cast<int>(key_points_right.size() - 1), best_match.distance);
+
+      disparity.at<int16_t>(searchPoint) = static_cast<int16_t>(kp_left[best_match.queryIdx].pt.x - kp_right[best_match.trainIdx].pt.x);
+    }
+
+    if (this->settings_.show_debug_info) {
+      cv::Mat img_best_match;
+      cv::drawMatches(left_image_rectified, key_points_left, right_image_rectified, key_points_right,
+                      best_matches, img_best_match);
+      cv::imshow("Best Match to the given Point", img_best_match);
+    }
+
+    return disparity;
   }
 
 } // namespace stereo_vision

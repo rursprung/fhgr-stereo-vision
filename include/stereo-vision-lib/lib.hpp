@@ -27,6 +27,8 @@ namespace stereo_vision {
     enum Value {
       /// The provided image is invalid (e.g. empty / no data).
       kInvalidImage,
+      /// Some configuration in the settings is wrong.
+      kInvalidSettings,
     };
 
     AnalysisError() = default;
@@ -61,9 +63,20 @@ namespace stereo_vision {
   class StereoVision {
   public:
     struct Settings {
+      enum class Algorithm {
+        kMatchTemplate,
+        kORB,
+      };
+
       /// The calibration data previously generated using the calibration application.
       /// Must match the camera used in this run!
       StereoCameraInfo const stereo_camera_info;
+
+      /// The algorithm to use to calculate the distances.
+      Algorithm const algorithm = Algorithm::kMatchTemplate;
+
+      /// Show debug information
+      bool const show_debug_info = false;
     };
 
     explicit StereoVision(Settings settings);
@@ -123,13 +136,13 @@ namespace stereo_vision {
     /**
     * Finds the given patch in the right image and calculates the disparity for each point.
     *
-    * @param searchPoints Points to be found in the right image.
+    * @param search_points Points to be found in the right image.
     * @param left_image_rectified the left rectified image. this will be modified: the ROI will be painted into it.
     * @param right_image_rectified the right rectified image. this will be modified: the ROI will be painted into it.
     * @return the disparity map for the given points. all other points will be set to zero in the disparity map.
     */
     [[nodiscard]]
-    auto CalculateDisparityMapAtSpecificPoints(std::vector<cv::Point> const& searchPoints, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
+    auto CalculateDisparityMapAtSpecificPoints(std::vector<cv::Point> const& search_points, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
 
     /**
      * @param points2D the 2D points which should be reprojected to 3D based on
@@ -139,6 +152,17 @@ namespace stereo_vision {
      */
     [[nodiscard]]
     auto Reproject2DPointsTo3D(std::pair<cv::Point, cv::Point> const& points2D, cv::Mat const& disparity) const -> std::pair<cv::Vec3f, cv::Vec3f>;
+
+    /**
+    * Finds the same features in the left and right image using ORB and calculates the disparity between them.
+    *
+    * @param search_points Points to search features around them.
+    * @param left_image_rectified the left rectified image.
+    * @param right_image_rectified the right rectified image.
+    * @return the disparity map for the given points. all other points will be set to zero in the disparity map.
+    */
+    [[nodiscard]]
+    auto CalculateDisparityUsingFeatureExtractionAtSpecificPoints(std::vector<cv::Point> const& search_points, cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
 
   };
 

@@ -87,6 +87,16 @@ auto GetPathsFromArgs(int const argc, char const *const argv[]) -> path_t {
   }
 }
 
+auto NewStereoVision(std::filesystem::path const& calibration_file_path) -> stereo_vision::StereoVision {
+  return stereo_vision::StereoVision{
+           {
+             .stereo_camera_info = stereo_vision::LoadStereoCameraInfo(calibration_file_path),
+             .algorithm = stereo_vision::StereoVision::Settings::Algorithm::kMatchTemplate,
+             .show_debug_info = true,
+           }
+         };
+}
+
 /**
  * Process a set of images from a folder. One image pair at a time will be processed and the program will wait for a
  * keypress before showing the next.
@@ -95,7 +105,7 @@ auto GetPathsFromArgs(int const argc, char const *const argv[]) -> path_t {
  * calibration file.
  */
 void ProcessFolderPath(FolderPath const& folder_path) {
-  stereo_vision::StereoVision const stereo_vis{{stereo_vision::LoadStereoCameraInfo(folder_path.calibration_file_path)}};
+  auto const stereo_vis = NewStereoVision(folder_path.calibration_file_path);
   auto const folder_left = folder_path.folder_path / "left";
   auto const folder_right = folder_path.folder_path / "right";
   if (!std::filesystem::exists(folder_left) || !std::filesystem::exists(folder_right)) {
@@ -122,7 +132,7 @@ void ProcessFolderPath(FolderPath const& folder_path) {
  * @param image_path Path to a pair of stereo images. Also contains the path to the calibration file.
  */
 void ProcessImagePath(ImagePath const& image_path) {
-  stereo_vision::StereoVision const stereo_vis{{stereo_vision::LoadStereoCameraInfo(image_path.calibration_file_path)}};
+  auto const stereo_vis = NewStereoVision(image_path.calibration_file_path);
   auto const left_image = cv::imread(image_path.left_path.string(), cv::IMREAD_COLOR);
   auto const right_image = cv::imread(image_path.right_path.string(), cv::IMREAD_COLOR);
   stereo_vision::Viewer().ProcessImagePair(stereo_vis, left_image, right_image);
