@@ -23,8 +23,7 @@ The project consists of the following parts:
 * [A camera calibration tool](apps/calibrate/README.md) (which is independent of the library)
 * The stereo vision implementation:
   * The library (everything in [`src/`](src/)), including test coverage (everything in [`test/`](src/))
-  * [An application using static images](apps/static-image/README.md)
-  * [An application using live images from a camera setup](apps/livecam/README.md)
+  * [An application using the library](apps/stereo-vision/README.md)
 
 ## Building
 
