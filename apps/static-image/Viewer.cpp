@@ -54,6 +54,9 @@ namespace stereo_vision {
 
     cv::imshow("left", result->left_image);
     cv::imshow("right", result->right_image);
+    if (result->depth_map) {
+      cv::imshow("depth map", *result->depth_map);
+    }
     cv::waitKey();
   }
 

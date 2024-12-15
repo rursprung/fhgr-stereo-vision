@@ -4,6 +4,7 @@
 #include <expected>
 #include <vector>
 #include <utility>
+#include <optional>
 
 #include <opencv2/opencv.hpp>
 
@@ -55,6 +56,8 @@ namespace stereo_vision {
     cv::Mat const right_image;
     /// The 3D reprojected points of the original input points.
     std::pair<cv::Vec3f, cv::Vec3f> const points_3d;
+    /// The depth map where each pixel contains the physical distance (in mm) of that point from the camera.
+    std::optional<cv::Mat> const depth_map;
   };
 
   /// Print detailed information about the result to an output stream.
@@ -179,6 +182,15 @@ namespace stereo_vision {
     [[nodiscard]]
     auto CalculateDisparityMapUsingSGBM(cv::Mat const& left_image_rectified, cv::Mat const& right_image_rectified) const -> cv::Mat;
 
+    /**
+    * Calculates the real distance in front of the camera for each point in the disparity map.
+    * This is done using manual calculation rather than relying on OpenCV.
+    *
+    * @param disparity the disparity map.
+    * @return the depth map with each pixel storing the distance from the camera at that position.
+    */
+    [[nodiscard]]
+    auto CalculateDepthMapSimple(cv::Mat const& disparity) const -> cv::Mat;
   };
 
 } // namespace stereo_vision

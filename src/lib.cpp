@@ -74,10 +74,13 @@ namespace stereo_vision {
     }
     auto const& search_3d_points = this->Reproject2DPointsTo3D(search_points, disparity);
 
+    std::optional<cv::Mat> depth_map = this->settings_.algorithm == Settings::Algorithm::kSGBM ? std::make_optional(this->CalculateDepthMapSimple(disparity)) : std::nullopt;
+
     return {{
       .left_image = left_image_rectified,
       .right_image = right_image_rectified,
       .points_3d = search_3d_points,
+      .depth_map = depth_map,
     }};
   }
 
@@ -271,6 +274,23 @@ namespace stereo_vision {
     }
 
     return disparity;
+  }
+
+  auto StereoVision::CalculateDepthMapSimple(cv::Mat const& disparity) const -> cv::Mat {
+    // the "cleaner" solution would be to use cv::reprojectImageTo3D(disparity, points3D, this->Q_, true);
+
+    cv::Mat depth{disparity.size(), CV_32F};
+    auto baseline = static_cast<float>(std::abs(this->settings_.stereo_camera_info.T.at<double>(0, 0))); // in millimeters
+    auto focal_length = static_cast<float>(this->settings_.stereo_camera_info.camera_matrix_left.at<double>(0, 0)); // in pixel
+
+    for (int y = 0; y < disparity.rows; ++y) {
+      for (int x = 0; x < disparity.cols; ++x) {
+        auto disparity_value = disparity.at<int16_t>(y, x);
+        depth.at<float>(y, x) = (disparity_value > 0) ? (baseline * focal_length) / static_cast<float>(disparity_value): 0.0f;
+      }
+    }
+
+    return depth;
   }
 
 } // namespace stereo_vision
