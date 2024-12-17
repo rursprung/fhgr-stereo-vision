@@ -30,6 +30,10 @@ int main(int const argc, char const * const argv[]) {
 
     cv::VideoCapture cap1(cap1_id), cap2(cap2_id);
 
+    if (!cap1.isOpened() || cap2.isOpened()) {
+      throw std::runtime_error("Failed to open camera capture!");
+    }
+
     stereo_vision::calibration::CalibrationRun::Config config{
       .show_images = true,
       .wait_time = 1,
