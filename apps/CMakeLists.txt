@@ -1,2 +1,2 @@
 add_subdirectory(calibrate)
-add_subdirectory(static-image)
+add_subdirectory(stereo-vision)

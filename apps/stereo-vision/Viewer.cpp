@@ -60,4 +60,10 @@ namespace stereo_vision {
     cv::waitKey();
   }
 
+  void Viewer::DisplayOnlyImagePair(cv::Mat const& left_image, cv::Mat const& right_image) const {
+    auto const& [left_image_rectified, right_image_rectified] = this->stereo_vis_.RescaleAndRectifyImages(left_image, right_image);
+    cv::imshow("left", left_image_rectified);
+    cv::imshow("right", right_image_rectified);
+  }
+
 } // stereo_vision
