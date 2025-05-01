@@ -1,9 +1,30 @@
 #include <opencv2/core/utils/logger.hpp>
+#include <variant>
 
 #include "calibration.hpp"
 
 [[nodiscard]]
-auto GetDirectoryPathAndCamerasFromArgs(int const argc, char const *const argv[]) -> std::tuple<std::filesystem::path, int, int> {
+auto GetIntOrString(std::string const& s) -> std::variant<int, std::string> {
+  auto const is_number = [] (std::string const& s) -> auto { return !s.empty() && std::ranges::all_of(s, ::isdigit); };
+
+  if (is_number(s)) {
+    return std::stoi(s);
+  } else {
+    return s;
+  }
+}
+
+[[nodiscard]]
+auto VideoCaptureFromIdOrString(std::variant<int, std::string> const& id) -> cv::VideoCapture {
+  if (std::holds_alternative<int>(id)) {
+    return cv::VideoCapture(std::get<int>(id));
+  } else {
+    return cv::VideoCapture(std::get<std::string>(id));
+  }
+}
+
+[[nodiscard]]
+auto GetDirectoryPathAndCamerasFromArgs(int const argc, char const *const argv[]) -> std::tuple<std::filesystem::path, std::variant<int, std::string>, std::variant<int, std::string>> {
   if (argc != 4) {
     throw std::runtime_error(std::format("expected 3 argument but got {}!", argc - 1));
   }
@@ -16,10 +37,7 @@ auto GetDirectoryPathAndCamerasFromArgs(int const argc, char const *const argv[]
     throw std::runtime_error(std::format("specified path is not a directory: {}", path.string()));
   }
 
-  auto const cap1 = std::stoi(argv[2]);
-  auto const cap2 = std::stoi(argv[3]);
-
-  return {path, cap1, cap2};
+  return {path, GetIntOrString(argv[2]), GetIntOrString(argv[3])};
 }
 
 int main(int const argc, char const * const argv[]) {
@@ -28,9 +46,10 @@ int main(int const argc, char const * const argv[]) {
   try {
     auto const [path, cap1_id, cap2_id] = GetDirectoryPathAndCamerasFromArgs(argc, argv);
 
-    cv::VideoCapture cap1(cap1_id), cap2(cap2_id);
+    auto cap1 = VideoCaptureFromIdOrString(cap1_id);
+    auto cap2 = VideoCaptureFromIdOrString(cap2_id);
 
-    if (!cap1.isOpened() || cap2.isOpened()) {
+    if (!cap1.isOpened() || !cap2.isOpened()) {
       throw std::runtime_error("Failed to open camera capture!");
     }
 
@@ -51,7 +70,7 @@ int main(int const argc, char const * const argv[]) {
     auto const calibration_result_file_path = path / "calibration.yml";
   } catch (std::exception const& ex) {
     std::cerr << ex.what() << std::endl;
-    std::cerr << "Usage: " << argv[0] << " [image_folder_path] [left_camera_id] [right_camera_id]" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " [image_folder_path] [left_camera_id|left_camera_url] [right_camera_id|left_camera_url]" << std::endl;
     return 1;
   }
 

@@ -2,16 +2,38 @@
 #include <format>
 #include <iostream>
 #include <stdexcept>
-#include <ranges>
+#include <variant>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
 #include <stereo-vision-lib/lib.hpp>
+
 #include "Viewer.hpp"
 
+
 [[nodiscard]]
-auto GetConfigPathAndCamerasFromArgs(int const argc, char const *const argv[]) -> std::tuple<std::filesystem::path, int, int> {
+auto GetIntOrString(std::string const& s) -> std::variant<int, std::string> {
+  auto const is_number = [] (std::string const& s) -> auto { return !s.empty() && std::ranges::all_of(s, ::isdigit); };
+
+  if (is_number(s)) {
+    return std::stoi(s);
+  } else {
+    return s;
+  }
+}
+
+[[nodiscard]]
+auto VideoCaptureFromIdOrString(std::variant<int, std::string> const& id) -> cv::VideoCapture {
+  if (std::holds_alternative<int>(id)) {
+    return cv::VideoCapture(std::get<int>(id));
+  } else {
+    return cv::VideoCapture(std::get<std::string>(id));
+  }
+}
+
+[[nodiscard]]
+auto GetConfigPathAndCamerasFromArgs(int const argc, char const *const argv[]) -> std::tuple<std::filesystem::path, std::variant<int, std::string>, std::variant<int, std::string>> {
   if (argc != 4) {
     throw std::runtime_error(std::format("expected 3 argument but got {}!", argc - 1));
   }
@@ -24,10 +46,7 @@ auto GetConfigPathAndCamerasFromArgs(int const argc, char const *const argv[]) -
     throw std::runtime_error(std::format("specified path is not a file: {}", path.string()));
   }
 
-  auto const cap1 = std::stoi(argv[2]);
-  auto const cap2 = std::stoi(argv[3]);
-
-  return {path, cap1, cap2};
+  return {path, GetIntOrString(argv[2]), GetIntOrString(argv[3])};
 }
 
 auto NewStereoVision(std::filesystem::path const& calibration_file_path) -> stereo_vision::StereoVision {
@@ -82,13 +101,14 @@ int main(int const argc, char const * const argv[]) {
              }
     };
     stereo_vision::Viewer viewer{stereo_vis};
-    cv::VideoCapture cap_left(cap1_id), cap_right(cap2_id);
+    auto cap_left = VideoCaptureFromIdOrString(cap1_id);
+    auto cap_right = VideoCaptureFromIdOrString(cap2_id);
 
     ProcessLiveStream(viewer, cap_left, cap_right);
 
   } catch (std::exception const& ex) {
     std::cerr << ex.what() << std::endl;
-    std::cerr << "Usage: " << argv[0] << " [calibration_file_path] [left_camera_id] [right_camera_id]" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " [calibration_file_path] [left_camera_id|left_camera_url] [right_camera_id|left_camera_url]" << std::endl;
     return 1;
   }
 
