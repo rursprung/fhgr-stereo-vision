@@ -1,11 +1,16 @@
 {
   "name": "stereo-vision",
   "version-string": "1.0.0",
-  "builtin-baseline": "89f00b3b8611028566a5264afce725cdfdfddbb4",
+  "builtin-baseline": "5a874b05fb981e2643fd0c1c9ad63e19dfe76b27",
   "dependencies": [
     {
       "name": "opencv",
-      "version>=": "4.10.0"
+      "version>=": "4.11.0",
+      "features": [
+        "contrib",
+        "nonfree",
+        "ffmpeg"
+      ]
     },
     {
       "name": "gtest",
