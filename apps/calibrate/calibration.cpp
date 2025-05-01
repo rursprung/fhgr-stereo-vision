@@ -109,14 +109,28 @@ namespace stereo_vision::calibration {
     if (result_left && result_right) {
       auto const& [opl, ipl] = *result_left;
       auto const& [opr, ipr] = *result_right;
-      if (opl.size() != opr.size()) {
-        std::cerr << "left & right didn't match the same amount of points (" << opl.size() << " vs. " << opr.size() << ") => skipping" << std::endl;
-        return;
+
+      // select only the points which exist in both images
+      std::vector<cv::Point3f> op_final;
+      std::vector<cv::Point2f> ipl_final, ipr_final;
+      for (auto const& [opl_, ipl_] : std::views::zip(opl, ipl)) {
+        for (auto const& [opr_, ipr_] : std::views::zip(opr, ipr)) {
+          if (opr_ == opl_) {
+            op_final.push_back(opl_);
+            ipl_final.push_back(ipl_);
+            ipr_final.push_back(ipr_);
+            break;
+          }
+        }
       }
-      this->object_points_left_.push_back(opl);
-      this->image_points_left_.push_back(ipl);
-      this->object_points_right_.push_back(opr);
-      this->image_points_right_.push_back(ipr);
+      if (opl.size() != opr.size()) {
+        std::cerr << "left & right didn't match the same amount of points (" << opl.size() << " vs. " << opr.size() << "), using " << op_final.size() << " common points" << std::endl;
+      }
+
+      this->object_points_left_.push_back(op_final);
+      this->image_points_left_.push_back(ipl_final);
+      this->object_points_right_.push_back(op_final);
+      this->image_points_right_.push_back(ipr_final);
     }
 
     if (this->config_.report_progress) {
