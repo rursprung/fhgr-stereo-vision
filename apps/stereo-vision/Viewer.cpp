@@ -66,4 +66,15 @@ namespace stereo_vision {
     cv::imshow("right", right_image_rectified);
   }
 
-} // stereo_vision
+  void Viewer::SaveImagePair(cv::Mat const& left_image,
+                             cv::Mat const& right_image,
+                             std::filesystem::path const& root_path) {
+    auto const& [left_image_rectified, right_image_rectified] = this->stereo_vis_.RescaleAndRectifyImages(left_image, right_image);
+    auto const filename = std::format("{:04d}.jpg", this->saved_frame_id);
+    std::cout << "saving images " << filename << " to " << root_path.string() << std::endl;
+    cv::imwrite((root_path / "left" / filename).string(), left_image_rectified);
+    cv::imwrite((root_path / "right" / filename).string(), right_image_rectified);
+    ++this->saved_frame_id;
+  }
+
+  } // stereo_vision
