@@ -68,12 +68,27 @@ auto NewStereoVision(std::filesystem::path const& calibration_file_path) -> ster
  * @param cap_right the right video capture device.
  */
 void ProcessLiveStream(stereo_vision::Viewer& viewer, cv::VideoCapture& cap_left, cv::VideoCapture& cap_right) {
-  std::cout << "Press 'q' to quit, ' ' (space) to freeze a frame and process it" << std::endl;
+  std::cout << "Press 'q' to quit, ' ' (space) to freeze a frame and process it and 's' to save a frame" << std::endl;
+
+  auto const save_path = std::filesystem::path{"."} / "resources" / "live";
+
+  uint8_t read_error_count = 0;
 
   while (true) {
     cv::Mat image_left, image_right;
     cap_left >> image_left;
     cap_right >> image_right;
+
+    if (image_left.empty() || image_right.empty()) {
+      ++read_error_count;
+      if (read_error_count >= 10) {
+        std::cout << "failed to read an image for 10 consecutive frames!" << std::endl;
+        return;
+      }
+      continue;
+    }
+    read_error_count = 0;
+
     auto const key = cv::pollKey() & 0xFF;
     switch (key) {
     case 'q':
@@ -81,6 +96,9 @@ void ProcessLiveStream(stereo_vision::Viewer& viewer, cv::VideoCapture& cap_left
     case ' ':
       viewer.ProcessImagePair(image_left, image_right);
       break;
+    case 's':
+      viewer.SaveImagePair(image_left, image_right, save_path);
+      [[fallthrough]];
     default:
       viewer.DisplayOnlyImagePair(image_left, image_right);
     }

@@ -123,8 +123,12 @@ namespace stereo_vision::calibration {
           }
         }
       }
-      if (opl.size() != opr.size()) {
-        std::cerr << "left & right didn't match the same amount of points (" << opl.size() << " vs. " << opr.size() << "), using " << op_final.size() << " common points" << std::endl;
+      if (op_final.size() != opr.size()) {
+        std::cerr << "left & right didn't match the same points (" << opl.size() << " vs. " << opr.size() << "), using " << op_final.size() << " common points" << std::endl;
+      }
+      if (op_final.size() < 4) {
+        std::cerr << "didn't match enough points, need at least 4 but only got " << op_final.size() << " -> skipping" << std::endl;
+        return;
       }
 
       this->object_points_left_.push_back(op_final);
