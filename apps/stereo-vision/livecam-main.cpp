@@ -72,10 +72,23 @@ void ProcessLiveStream(stereo_vision::Viewer& viewer, cv::VideoCapture& cap_left
 
   auto const save_path = std::filesystem::path{"."} / "resources" / "live";
 
+  uint8_t read_error_count = 0;
+
   while (true) {
     cv::Mat image_left, image_right;
     cap_left >> image_left;
     cap_right >> image_right;
+
+    if (image_left.empty() || image_right.empty()) {
+      ++read_error_count;
+      if (read_error_count >= 10) {
+        std::cout << "failed to read an image for 10 consecutive frames!" << std::endl;
+        return;
+      }
+      continue;
+    }
+    read_error_count = 0;
+
     auto const key = cv::pollKey() & 0xFF;
     switch (key) {
     case 'q':
