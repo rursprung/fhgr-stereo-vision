@@ -30,7 +30,7 @@ jobs:
             c_compiler: cl
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install CMake + Ninja
         uses: lukka/get-cmake@latest
