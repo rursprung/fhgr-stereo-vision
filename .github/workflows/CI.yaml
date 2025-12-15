@@ -58,7 +58,7 @@ jobs:
           ]"
       - name: upload logs
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: vcpkg-buildtree-logs-${{ matrix.os }}
           path: |
